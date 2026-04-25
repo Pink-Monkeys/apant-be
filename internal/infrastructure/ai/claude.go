@@ -1,0 +1,121 @@
+package ai
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"time"
+
+	"apant_be/internal/domain"
+)
+
+type ClaudeProvider struct {
+	apiKey string
+	model  string
+	client *http.Client
+}
+
+func NewClaudeProvider(apiKey, model string) *ClaudeProvider {
+	return &ClaudeProvider{
+		apiKey: apiKey,
+		model:  model,
+		client: &http.Client{Timeout: 60 * time.Second},
+	}
+}
+
+func (p *ClaudeProvider) Name() string {
+	return "claude"
+}
+
+type claudeRequest struct {
+	Model     string              `json:"model"`
+	MaxTokens int                 `json:"max_tokens"`
+	System    string              `json:"system,omitempty"`
+	Messages  []claudeMessageItem `json:"messages"`
+}
+
+type claudeMessageItem struct {
+	Role    string              `json:"role"`
+	Content []claudeContentItem `json:"content"`
+}
+
+type claudeContentItem struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
+
+type claudeResponse struct {
+	ID      string `json:"id"`
+	Model   string `json:"model"`
+	Content []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	} `json:"content"`
+}
+
+func (p *ClaudeProvider) Generate(ctx context.Context, in domain.AIGenerateInput) (domain.AIGenerateOutput, error) {
+	model := in.Model
+	if model == "" {
+		model = p.model
+	}
+
+	reqBody := claudeRequest{
+		Model:     model,
+		MaxTokens: 1500,
+		System:    in.System,
+		Messages: []claudeMessageItem{
+			{
+				Role: "user",
+				Content: []claudeContentItem{
+					{Type: "text", Text: in.User},
+				},
+			},
+		},
+	}
+
+	b, err := json.Marshal(reqBody)
+	if err != nil {
+		return domain.AIGenerateOutput{}, err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.anthropic.com/v1/messages", bytes.NewReader(b))
+	if err != nil {
+		return domain.AIGenerateOutput{}, err
+	}
+
+	req.Header.Set("x-api-key", p.apiKey)
+	req.Header.Set("anthropic-version", "2023-06-01")
+	req.Header.Set("content-type", "application/json")
+
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return domain.AIGenerateOutput{}, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return domain.AIGenerateOutput{}, err
+	}
+
+	if resp.StatusCode >= 300 {
+		return domain.AIGenerateOutput{}, fmt.Errorf("claude error: %s", string(body))
+	}
+
+	var out claudeResponse
+	if err := json.Unmarshal(body, &out); err != nil {
+		return domain.AIGenerateOutput{}, err
+	}
+
+	var text string
+	for _, c := range out.Content {
+		if c.Text != "" {
+			text += c.Text
+		}
+	}
+
+	return domain.AIGenerateOutput{Model: out.Model, Text: text, RawID: out.ID}, nil
+}

@@ -1,0 +1,29 @@
+# VCS and CI metadata
+.git
+.github
+.gitignore
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Build artifacts and caches
+bin
+build
+dist
+*.out
+*.test
+coverage.out
+coverage.html
+.gocache
+.cache
+
+# Editor and OS files
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Documentation and local notes
+memories
