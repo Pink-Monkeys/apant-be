@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"apant_be/internal/application/pentest"
+	"apant_be/internal/shared/httpx"
 )
 
 type SessionHandler struct {
@@ -18,19 +19,13 @@ func NewSessionHandler(service *pentest.Service) *SessionHandler {
 
 func (h *SessionHandler) Create(c fiber.Ctx) error {
 	sess := h.service.CreateSession()
-	return c.Status(http.StatusCreated).JSON(fiber.Map{
-		"success": true,
-		"data":    sess,
-	})
+	return httpx.JSONSuccess(c, http.StatusCreated, "session created successfully", sess)
 }
 
 func (h *SessionHandler) List(c fiber.Ctx) error {
 	sessions := h.service.ListSessions()
-	return c.Status(http.StatusOK).JSON(fiber.Map{
-		"success": true,
-		"data": fiber.Map{
-			"sessions": sessions,
-		},
+	return httpx.JSONSuccess(c, http.StatusOK, "sessions retrieved successfully", fiber.Map{
+		"sessions": sessions,
 	})
 }
 
@@ -40,8 +35,5 @@ func (h *SessionHandler) Get(c fiber.Ctx) error {
 		return writeError(c, err)
 	}
 
-	return c.Status(http.StatusOK).JSON(fiber.Map{
-		"success": true,
-		"data":    sess,
-	})
+	return httpx.JSONSuccess(c, http.StatusOK, "session retrieved successfully", sess)
 }

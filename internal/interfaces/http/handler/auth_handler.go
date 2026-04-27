@@ -34,7 +34,7 @@ func (h *AuthHandler) Register(c fiber.Ctx) error {
 		return writeAuthError(c, err)
 	}
 
-	return httpx.JSONSuccess(c, http.StatusCreated, resp)
+	return httpx.JSONSuccess(c, http.StatusCreated, "user registered successfully", resp)
 }
 
 func (h *AuthHandler) Login(c fiber.Ctx) error {
@@ -48,7 +48,7 @@ func (h *AuthHandler) Login(c fiber.Ctx) error {
 		return writeAuthError(c, err)
 	}
 
-	return httpx.JSONSuccess(c, http.StatusOK, resp)
+	return httpx.JSONSuccess(c, http.StatusOK, "login successful", resp)
 }
 
 func (h *AuthHandler) RefreshToken(c fiber.Ctx) error {
@@ -62,7 +62,7 @@ func (h *AuthHandler) RefreshToken(c fiber.Ctx) error {
 		return writeAuthError(c, err)
 	}
 
-	return httpx.JSONSuccess(c, http.StatusOK, resp)
+	return httpx.JSONSuccess(c, http.StatusOK, "token refreshed successfully", resp)
 }
 
 func (h *AuthHandler) Logout(c fiber.Ctx) error {
@@ -83,7 +83,7 @@ func (h *AuthHandler) Logout(c fiber.Ctx) error {
 		return writeAuthError(c, err)
 	}
 
-	return httpx.JSONSuccess(c, http.StatusOK, fiber.Map{"message": "logout successful"})
+	return httpx.JSONSuccess(c, http.StatusOK, "logout successful", fiber.Map{})
 }
 
 func writeAuthError(c fiber.Ctx, err error) error {

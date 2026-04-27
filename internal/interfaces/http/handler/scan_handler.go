@@ -19,11 +19,11 @@ func NewScanHandler(service *pentest.Service) *ScanHandler {
 }
 
 func (h *ScanHandler) Health(c fiber.Ctx) error {
-	return httpx.JSONSuccess(c, http.StatusOK, fiber.Map{"status": "ok"})
+	return httpx.JSONSuccess(c, http.StatusOK, "service is healthy", fiber.Map{"status": "ok"})
 }
 
 func (h *ScanHandler) Providers(c fiber.Ctx) error {
-	return httpx.JSONSuccess(c, http.StatusOK, fiber.Map{"providers": h.service.Providers()})
+	return httpx.JSONSuccess(c, http.StatusOK, "providers retrieved successfully", fiber.Map{"providers": h.service.Providers()})
 }
 
 func (h *ScanHandler) Chat(c fiber.Ctx) error {
@@ -37,7 +37,7 @@ func (h *ScanHandler) Chat(c fiber.Ctx) error {
 		return writeError(c, err)
 	}
 
-	return httpx.JSONSuccess(c, http.StatusOK, resp)
+	return httpx.JSONSuccess(c, http.StatusOK, "chat response generated successfully", resp)
 }
 
 func (h *ScanHandler) AgentChat(c fiber.Ctx) error {
@@ -51,7 +51,7 @@ func (h *ScanHandler) AgentChat(c fiber.Ctx) error {
 		return writeError(c, err)
 	}
 
-	return httpx.JSONSuccess(c, http.StatusOK, resp)
+	return httpx.JSONSuccess(c, http.StatusOK, "agent chat response generated successfully", resp)
 }
 
 func (h *ScanHandler) AgentExecute(c fiber.Ctx) error {
@@ -65,7 +65,7 @@ func (h *ScanHandler) AgentExecute(c fiber.Ctx) error {
 		return writeError(c, err)
 	}
 
-	return httpx.JSONSuccess(c, http.StatusOK, resp)
+	return httpx.JSONSuccess(c, http.StatusOK, "agent execution completed successfully", resp)
 }
 
 func (h *ScanHandler) AgentLoop(c fiber.Ctx) error {
@@ -79,11 +79,11 @@ func (h *ScanHandler) AgentLoop(c fiber.Ctx) error {
 		return writeError(c, err)
 	}
 
-	return httpx.JSONSuccess(c, http.StatusOK, resp)
+	return httpx.JSONSuccess(c, http.StatusOK, "agent loop completed successfully", resp)
 }
 
 func (h *ScanHandler) Tools(c fiber.Ctx) error {
-	return httpx.JSONSuccess(c, http.StatusOK, fiber.Map{"tools": h.service.ListTools()})
+	return httpx.JSONSuccess(c, http.StatusOK, "tools retrieved successfully", fiber.Map{"tools": h.service.ListTools()})
 }
 
 func writeError(c fiber.Ctx, err error) error {
