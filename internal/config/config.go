@@ -39,7 +39,7 @@ func Load() Config {
 
 	return Config{
 		AppName:                  getEnv("APP_NAME", "apant_be"),
-		Port:                     getEnv("PORT", "8080"),
+		Port:                     getEnv("PORT", "8000"),
 		AppEnv:                   getEnv("APP_ENV", "development"),
 		OpenAIAPIKey:             os.Getenv("OPENAI_API_KEY"),
 		OpenAIModel:              getEnv("OPENAI_MODEL", "gpt-5.4-mini"),

@@ -21,9 +21,9 @@ RUN apk add --no-cache ca-certificates tzdata docker-cli && \
 
 COPY --from=builder /out/apant-be /app/apant-be
 
-ENV PORT=8080
+ENV PORT=8000
 ENV DOCKER_BINARY=docker
-EXPOSE 8080
+EXPOSE 8000
 
 USER app
 

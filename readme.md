@@ -59,24 +59,79 @@ Migration rules:
 - Keep both up and down migrations valid.
 - `APP_ENV=production` disables auth `AutoMigrate` by default.
 
-## 4) Docker
+## 4) Docker Quick Start (API Only, External DB)
 
-Build image:
+This section focuses only on running this Go Fiber API image.
+PostgreSQL is assumed to be provided by another service/environment.
+
+### 4.1 Build Image
 
 ```powershell
-docker build -t apant-be:local .
+docker build -t apant-be:latest .
 ```
 
-Run image:
+### 4.2 Prepare Runtime Env
+
+Copy template:
 
 ```powershell
-docker run --rm -p 8080:8080 --env-file .env apant-be:local
+Copy-Item .env.example .env
 ```
 
-If scanner endpoints must run from inside this container, provide Docker socket access (high privilege, use only in trusted environments):
+Then set at least these values in `.env`:
+
+```dotenv
+APP_ENV=production
+PORT=8000
+
+AUTH_STORAGE=postgres
+JWT_SECRET=replace-with-strong-secret
+
+DB_HOST=your-postgres-host
+DB_PORT=5432
+DB_USER=your-postgres-user
+DB_PASSWORD=your-postgres-password
+DB_NAME=apant_be
+DB_SSLMODE=disable
+DB_TIMEZONE=Asia/Jakarta
+```
+
+Notes:
+
+- Docker image packages the app binary, not your environment-specific secrets/config.
+- `.env` (or `-e`) is still required to inject runtime config like DB host, credentials, JWT secret, and API keys.
+- If a variable is not set, app uses default from `internal/config/config.go` when available.
+
+### 4.3 Run Container
 
 ```powershell
-docker run --rm -p 8080:8080 --env-file .env -v //var/run/docker.sock:/var/run/docker.sock apant-be:local
+docker run -d --name apant-be -p 8000:8000 --env-file .env apant-be:latest
+```
+
+If scanner endpoints need to run Docker commands from inside API container (high privilege, only for trusted environments):
+
+```powershell
+docker rm -f apant-be
+docker run -d --name apant-be -p 8000:8000 --env-file .env -v //var/run/docker.sock:/var/run/docker.sock apant-be:latest
+```
+
+### 4.4 Verify
+
+```powershell
+docker logs -f apant-be
+curl http://localhost:8000/api/v1/health
+```
+
+### 4.5 Stop
+
+```powershell
+docker rm -f apant-be
+```
+
+Optional remove image:
+
+```powershell
+docker rmi apant-be:latest
 ```
 
 ## 5) GitHub CI/CD
