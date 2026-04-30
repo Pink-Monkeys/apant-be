@@ -77,27 +77,16 @@ func buildUserRepository(cfg config.Config) domain.UserRepository {
 			return db.NewMemoryUserRepository()
 		}
 
-		autoMigrate := shouldAutoMigrateAuth(cfg.AppEnv)
-		repo, err := db.NewPostgresUserRepository(postgresDB, autoMigrate)
+		repo, err := db.NewPostgresUserRepository(postgresDB)
 		if err != nil {
 			log.Printf("auth repository postgres initialization failed, falling back to memory: %v", err)
 			return db.NewMemoryUserRepository()
 		}
 
-		if autoMigrate {
-			log.Printf("auth storage backend: postgres (auto-migrate enabled for non-production environment)")
-		} else {
-			log.Printf("auth storage backend: postgres (auto-migrate disabled)")
-		}
-
+		log.Printf("auth storage backend: postgres")
 		return repo
 	}
 
 	log.Printf("auth storage backend: memory")
 	return db.NewMemoryUserRepository()
-}
-
-func shouldAutoMigrateAuth(appEnv string) bool {
-	env := strings.ToLower(strings.TrimSpace(appEnv))
-	return env == "development" || env == "dev" || env == "local"
 }

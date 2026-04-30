@@ -1,0 +1,72 @@
+package db
+
+import (
+	"fmt"
+
+	"github.com/go-gormigrate/gormigrate/v2"
+	"gorm.io/gorm"
+)
+
+const schemaMigrationsTable = "gorm_migrations"
+
+func ApplyMigrations(gormDB *gorm.DB) error {
+	if gormDB == nil {
+		return fmt.Errorf("gorm db is nil")
+	}
+
+	m := gormigrate.New(gormDB, &gormigrate.Options{
+		TableName: schemaMigrationsTable,
+	}, migrations())
+
+	return m.Migrate()
+}
+
+func RollbackLastMigration(gormDB *gorm.DB) error {
+	if gormDB == nil {
+		return fmt.Errorf("gorm db is nil")
+	}
+
+	m := gormigrate.New(gormDB, &gormigrate.Options{
+		TableName: schemaMigrationsTable,
+	}, migrations())
+
+	return m.RollbackLast()
+}
+
+func RollbackToMigration(gormDB *gorm.DB, migrationID string) error {
+	if gormDB == nil {
+		return fmt.Errorf("gorm db is nil")
+	}
+
+	m := gormigrate.New(gormDB, &gormigrate.Options{
+		TableName: schemaMigrationsTable,
+	}, migrations())
+
+	return m.RollbackTo(migrationID)
+}
+
+func migrations() []*gormigrate.Migration {
+	return []*gormigrate.Migration{
+		{
+			ID: "20260429_create_auth_tables",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&userModel{}, &refreshTokenModel{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable(&refreshTokenModel{}, &userModel{})
+			},
+		},
+		{
+			ID: "20260429_add_email_to_users",
+			Migrate: func(tx *gorm.DB) error {
+				type userEmailPatch struct {
+					Email string `gorm:"column:email;type:text"`
+				}
+				return tx.Table("users").AutoMigrate(&userEmailPatch{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropColumn("users", "email")
+			},
+		},
+	}
+}

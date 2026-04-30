@@ -44,7 +44,7 @@ flowchart LR
   - Source utama aplikasi dengan boundary per concern.
 
 - `migrations/`
-  - SQL migration versioned untuk schema database.
+  - Legacy placeholder
 
 - `scripts/`
   - Tempat script operasional/devops (saat ini kosong).
@@ -121,6 +121,7 @@ flowchart LR
   - `user_repository_memory.go`: implementasi in-memory.
   - `session_repository_memory.go`: implementasi `SessionRepository` in-memory.
   - `scan_repository_postgres.go`: skeleton adapter scan (belum implemented).
+  - `migrations.go`: definisi migration GORM via gormigrate.
 
 - `infrastructure/scanner`
   - `policy.go`: whitelist + parameter validation tool intent.

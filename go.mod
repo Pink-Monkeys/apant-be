@@ -14,6 +14,7 @@ require (
 
 require (
 	github.com/andybalholm/brotli v1.2.0 // indirect
+	github.com/go-gormigrate/gormigrate/v2 v2.1.5
 	github.com/gofiber/schema v1.7.0 // indirect
 	github.com/gofiber/utils/v2 v2.0.2 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
