@@ -25,39 +25,34 @@ go run .\cmd\api
 
 ## 3) Database Migration (PostgreSQL)
 
-Fiber does not provide built-in schema migration like Laravel Artisan.
-This project uses SQL migration files under `migrations/` and `golang-migrate`.
+This project uses GORM with `gormigrate` for schema migrations.
+All migration steps are defined in Go (no raw SQL), and executed via a dedicated command.
+The `migrations/` folder is not used in this workflow.
 
-Install migration CLI:
+Run migrations up:
 
 ```powershell
-go install -tags "postgres" github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+go run .\cmd\migrate
 ```
 
-Create new migration:
+Rollback last migration:
 
 ```powershell
-migrate create -ext sql -dir migrations -seq add_new_column_to_users
+go run .\cmd\migrate -rollback
 ```
 
-Run migration up:
+Rollback to a specific migration ID:
 
 ```powershell
-migrate -path migrations -database "postgres://postgres:YOUR_PASSWORD@localhost:5432/apant_be?sslmode=disable" up
-```
-
-Rollback one migration:
-
-```powershell
-migrate -path migrations -database "postgres://postgres:YOUR_PASSWORD@localhost:5432/apant_be?sslmode=disable" down 1
+go run .\cmd\migrate -rollback-to 20260429_create_auth_tables
 ```
 
 Migration rules:
 
-- Always create new migration files for schema changes.
-- Never edit old migration files that already ran in shared environments.
-- Keep both up and down migrations valid.
-- `APP_ENV=production` disables auth `AutoMigrate` by default.
+- Add new migration entries in `internal/infrastructure/db/migrations.go`.
+- Do not edit old migration IDs that already ran in shared environments.
+- Keep rollback logic safe and reversible.
+- Migrations are executed explicitly (not during app startup).
 
 ## 4) Docker Quick Start (API Only, External DB)
 

@@ -12,6 +12,7 @@ import (
 type userModel struct {
 	ID           string    `gorm:"column:id;type:text;primaryKey"`
 	Username     string    `gorm:"column:username;type:text;uniqueIndex;not null"`
+	Email        string    `gorm:"column:email;type:text"`
 	PasswordHash string    `gorm:"column:password_hash;type:text;not null"`
 	Role         string    `gorm:"column:role;type:text;not null"`
 	CreatedAt    time.Time `gorm:"column:created_at;not null"`
@@ -40,15 +41,9 @@ type PostgresUserRepository struct {
 	db *Postgres
 }
 
-func NewPostgresUserRepository(db *Postgres, autoMigrate bool) (*PostgresUserRepository, error) {
+func NewPostgresUserRepository(db *Postgres) (*PostgresUserRepository, error) {
 	if db == nil || db.DB == nil {
 		return nil, fmt.Errorf("postgres db is not initialized")
-	}
-
-	if autoMigrate {
-		if err := db.DB.AutoMigrate(&userModel{}, &refreshTokenModel{}); err != nil {
-			return nil, fmt.Errorf("failed to migrate auth tables: %w", err)
-		}
 	}
 
 	return &PostgresUserRepository{db: db}, nil
