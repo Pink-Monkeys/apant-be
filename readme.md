@@ -192,8 +192,8 @@ ghcr.io/<owner>/<repo>:<tag>
 - `DB_NAME`
 - `DB_SSLMODE`
 - `DB_TIMEZONE`
-- `DOCKER_BINARY`
-- `NMAP_DOCKER_IMAGE`
+- `SCANNER_BASE_URL`
+- `SCANNER_TIMEOUT_SECONDS`
 - `NMAP_TIMEOUT_SECONDS`
 
 ## 8) Basic Auth Endpoints

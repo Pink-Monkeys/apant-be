@@ -29,9 +29,8 @@ type Config struct {
 	DBName                   string
 	DBSSLMode                string
 	DBTimeZone               string
-	DockerBinary             string
-	NmapDockerImage          string
-	NmapTimeoutSeconds       int
+	ScannerBaseURL           string
+	ScannerTimeoutSeconds    int
 }
 
 func Load() Config {
@@ -57,9 +56,8 @@ func Load() Config {
 		DBName:                   getEnv("DB_NAME", "apant_be"),
 		DBSSLMode:                getEnv("DB_SSLMODE", "disable"),
 		DBTimeZone:               getEnv("DB_TIMEZONE", "Asia/Jakarta"),
-		DockerBinary:             getEnv("DOCKER_BINARY", "docker"),
-		NmapDockerImage:          getEnv("NMAP_DOCKER_IMAGE", "instrumentisto/nmap:latest"),
-		NmapTimeoutSeconds:       getEnvInt("NMAP_TIMEOUT_SECONDS", 60),
+		ScannerBaseURL:           getEnv("SCANNER_BASE_URL", "http://localhost:8081"),
+		ScannerTimeoutSeconds:    getEnvInt("SCANNER_TIMEOUT_SECONDS", 60),
 	}
 }
 
@@ -108,3 +106,4 @@ func getEnvInt(key string, fallback int) int {
 
 	return parsed
 }
+

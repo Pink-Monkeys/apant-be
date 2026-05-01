@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      SCANNER_BASE_URL: http://scanner:8081
+    ports:
+      - "8000:8000"
+    depends_on:
+      - scanner
+
+  scanner:
+    build:
+      context: .
+      dockerfile: docker/scanner/Dockerfile
+    env_file:
+      - .env
+    environment:
+      NMAP_TIMEOUT_SECONDS: 60
+      SCANNER_PORT: 8081
+    ports:
+      - "8081:8081"
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp

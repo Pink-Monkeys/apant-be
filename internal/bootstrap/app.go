@@ -40,10 +40,9 @@ func BuildApp(cfg config.Config) (*fiber.App, string) {
 	claudeProvider := ai.NewClaudeProvider(cfg.AnthropicKey, cfg.AnthropicModel)
 	aiGateway := ai.NewGateway(openAIProvider, claudeProvider)
 
-	executor := scanner.NewDockerNmapExecutor(scanner.DockerNmapConfig{
-		DockerBinary: cfg.DockerBinary,
-		NmapImage:    cfg.NmapDockerImage,
-		Timeout:      time.Duration(cfg.NmapTimeoutSeconds) * time.Second,
+	executor := scanner.NewHTTPScannerExecutor(scanner.HTTPScannerConfig{
+		BaseURL: cfg.ScannerBaseURL,
+		Timeout: time.Duration(cfg.ScannerTimeoutSeconds) * time.Second,
 	})
 	policy := scanner.NewToolPolicy()
 	registry := scanner.NewRegistry()
