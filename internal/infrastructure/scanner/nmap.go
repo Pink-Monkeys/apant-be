@@ -68,33 +68,10 @@ func (e *DockerNmapExecutor) Execute(intent *domain.ToolIntent) map[string]any {
 }
 
 func (e *DockerNmapExecutor) executeNmap(intent *domain.ToolIntent) map[string]any {
-	target, err := normalizeNmapTarget(intent.Params)
+	target, nmapArgs, serviceDetection, err := buildNmapArgs(intent)
 	if err != nil {
 		return map[string]any{"status": "error", "tool": "nmap_scan", "error": err.Error()}
 	}
-
-	ports, err := parseNmapPorts(intent.Params)
-	if err != nil {
-		return map[string]any{"status": "error", "tool": "nmap_scan", "error": err.Error()}
-	}
-
-	topPorts, err := parseTopPorts(intent.Params)
-	if err != nil {
-		return map[string]any{"status": "error", "tool": "nmap_scan", "error": err.Error()}
-	}
-
-	serviceDetection, _ := intent.Params["service_detection"].(bool)
-
-	nmapArgs := []string{"-Pn", "-n", "--max-retries", "1", "--host-timeout", "20s", "-oX", "-"}
-	if ports != "" {
-		nmapArgs = append(nmapArgs, "-p", ports)
-	} else {
-		nmapArgs = append(nmapArgs, "--top-ports", strconv.Itoa(topPorts))
-	}
-	if serviceDetection {
-		nmapArgs = append(nmapArgs, "-sV")
-	}
-	nmapArgs = append(nmapArgs, target)
 
 	dockerArgs := []string{"run", "--rm", "--network", "bridge", "--cap-drop", "ALL", e.nmapImage}
 	dockerArgs = append(dockerArgs, nmapArgs...)
@@ -144,6 +121,42 @@ func (e *DockerNmapExecutor) executeNmap(intent *domain.ToolIntent) map[string]a
 		"open_port_count":  parsed.OpenPortCount,
 		"hosts":            parsed.Hosts,
 	}
+}
+
+func buildNmapArgs(intent *domain.ToolIntent) (string, []string, bool, error) {
+	if intent == nil {
+		return "", nil, false, fmt.Errorf("nil tool intent")
+	}
+
+	target, err := normalizeNmapTarget(intent.Params)
+	if err != nil {
+		return "", nil, false, err
+	}
+
+	ports, err := parseNmapPorts(intent.Params)
+	if err != nil {
+		return "", nil, false, err
+	}
+
+	topPorts, err := parseTopPorts(intent.Params)
+	if err != nil {
+		return "", nil, false, err
+	}
+
+	serviceDetection, _ := intent.Params["service_detection"].(bool)
+
+	nmapArgs := []string{"-Pn", "-n", "--max-retries", "1", "--host-timeout", "20s", "-oX", "-"}
+	if ports != "" {
+		nmapArgs = append(nmapArgs, "-p", ports)
+	} else {
+		nmapArgs = append(nmapArgs, "--top-ports", strconv.Itoa(topPorts))
+	}
+	if serviceDetection {
+		nmapArgs = append(nmapArgs, "-sV")
+	}
+	nmapArgs = append(nmapArgs, target)
+
+	return target, nmapArgs, serviceDetection, nil
 }
 
 func normalizeNmapTarget(params map[string]any) (string, error) {

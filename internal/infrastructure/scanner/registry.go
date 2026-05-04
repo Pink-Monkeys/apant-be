@@ -9,9 +9,9 @@ type ToolRegistry struct {
 func NewRegistry() *ToolRegistry {
 	return &ToolRegistry{
 		tools: []domain.ToolInfo{
-			{Name: "nmap_scan", Description: "Run Nmap scan via Docker executor", Enabled: true},
-			{Name: "sqlmap_scan", Description: "Planned SQLMap scan via Docker executor", Enabled: false},
-			{Name: "nikto_scan", Description: "Planned Nikto web scan via Docker executor", Enabled: false},
+			{Name: "nmap_scan", Description: "Run Nmap scan via scanner service", Enabled: true},
+			{Name: "sqlmap_scan", Description: "Planned SQLMap scan via scanner service", Enabled: false},
+			{Name: "nikto_scan", Description: "Planned Nikto web scan via scanner service", Enabled: false},
 		},
 	}
 }

@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM golang:1.25.5-alpine AS builder
+FROM golang:1.25.7-alpine AS builder
 WORKDIR /src
 
 RUN apk add --no-cache ca-certificates tzdata
@@ -16,13 +16,12 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 FROM alpine:3.22
 WORKDIR /app
 
-RUN apk add --no-cache ca-certificates tzdata docker-cli && \
+RUN apk add --no-cache ca-certificates tzdata && \
     addgroup -S app && adduser -S -G app app
 
 COPY --from=builder /out/apant-be /app/apant-be
 
 ENV PORT=8000
-ENV DOCKER_BINARY=docker
 EXPOSE 8000
 
 USER app
