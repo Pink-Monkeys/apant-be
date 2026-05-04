@@ -27,3 +27,6 @@ Thumbs.db
 
 # Documentation and local notes
 memories
+
+# Data directory (tidak perlu masuk ke Docker build context)
+data/

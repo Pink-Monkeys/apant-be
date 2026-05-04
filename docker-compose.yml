@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   api:
     build:
@@ -12,7 +10,9 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - scanner
+      scanner:
+        condition: service_healthy
+    restart: unless-stopped
 
   scanner:
     build:
@@ -23,8 +23,12 @@ services:
     environment:
       NMAP_TIMEOUT_SECONDS: 60
       SCANNER_PORT: 8081
+      HOME: "/home/scanner"
     ports:
       - "8081:8081"
+    volumes:
+      - ./data/wordlists:/wordlists:ro
+      - nuclei-templates:/home/scanner/.nuclei-templates
     cap_add:
       - NET_RAW
       - NET_ADMIN
@@ -32,4 +36,19 @@ services:
       - no-new-privileges:true
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:mode=1777
+      - /home/scanner/.cache:uid=10001,gid=10001,mode=0700
+      - /home/scanner/.config:uid=10001,gid=10001,mode=0700
+      - /home/scanner/.sqlmap:uid=10001,gid=10001,mode=0700
+      - /home/scanner/.local:uid=10001,gid=10001,mode=0700
+      - /home/scanner/nuclei-reports:uid=10001,gid=10001,mode=0700
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+volumes:
+  nuclei-templates:
