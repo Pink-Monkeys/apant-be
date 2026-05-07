@@ -23,6 +23,27 @@ go mod tidy
 go run .\cmd\api
 ```
 
+### 2.1) Hot Reload (Development)
+
+Recommended tool: Air.
+
+1. Install Air:
+
+```powershell
+go install github.com/air-verse/air@latest
+```
+
+2. Run the dev server with hot reload:
+
+```powershell
+air
+```
+
+Notes:
+
+- Config file: `.air.toml` (already included in this repo).
+- Air rebuilds the API binary on file changes and restarts it automatically.
+
 ## 3) Database Migration (PostgreSQL)
 
 This project uses GORM with `gormigrate` for schema migrations.
