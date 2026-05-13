@@ -12,7 +12,7 @@ import (
 type userModel struct {
 	ID           string    `gorm:"column:id;type:text;primaryKey"`
 	Username     string    `gorm:"column:username;type:text;uniqueIndex;not null"`
-	Email        string    `gorm:"column:email;type:text"`
+	Email        string    `gorm:"column:email;type:text;uniqueIndex:idx_users_email,where:email IS NOT NULL AND email <> ''"`
 	PasswordHash string    `gorm:"column:password_hash;type:text;not null"`
 	Role         string    `gorm:"column:role;type:text;not null"`
 	CreatedAt    time.Time `gorm:"column:created_at;not null"`
@@ -61,6 +61,12 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user domain.User) e
 	}
 
 	if err := r.db.DB.WithContext(ctx).Create(&model).Error; err != nil {
+		if isUniqueViolation(err, "idx_users_email") {
+			return domain.ErrEmailConflict
+		}
+		if isUniqueViolation(err, "idx_users_username") {
+			return domain.ErrUsernameConflict
+		}
 		return err
 	}
 	return nil

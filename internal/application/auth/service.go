@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/mail"
@@ -87,6 +88,12 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (AuthRespon
 	}
 
 	if err := s.users.Create(ctx, user); err != nil {
+		if errors.Is(err, domain.ErrEmailConflict) {
+			return AuthResponse{}, appErrors.New(http.StatusConflict, "email is already used")
+		}
+		if errors.Is(err, domain.ErrUsernameConflict) {
+			return AuthResponse{}, appErrors.New(http.StatusConflict, "username is already used")
+		}
 		return AuthResponse{}, appErrors.Wrap(http.StatusInternalServerError, "failed to create user", err)
 	}
 
