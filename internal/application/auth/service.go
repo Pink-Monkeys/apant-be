@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
+	"net/mail"
 	"regexp"
 	"strings"
 	"time"
@@ -48,9 +49,10 @@ func NewService(users domain.UserRepository, jwtSecret string, accessTokenTTL, r
 
 func (s *Service) Register(ctx context.Context, req RegisterRequest) (AuthResponse, error) {
 	username := strings.ToLower(strings.TrimSpace(req.Username))
+	email := strings.ToLower(strings.TrimSpace(req.Email))
 	password := strings.TrimSpace(req.Password)
 
-	if err := validateCredentials(username, password); err != nil {
+	if err := validateRegisterCredentials(username, email, password); err != nil {
 		return AuthResponse{}, appErrors.New(http.StatusBadRequest, err.Error())
 	}
 
@@ -58,6 +60,14 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (AuthRespon
 		return AuthResponse{}, appErrors.Wrap(http.StatusInternalServerError, "failed to read user", err)
 	} else if found {
 		return AuthResponse{}, appErrors.New(http.StatusConflict, "username is already used")
+	}
+
+	if email != "" {
+		if _, found, err := s.users.FindByEmail(ctx, email); err != nil {
+			return AuthResponse{}, appErrors.Wrap(http.StatusInternalServerError, "failed to read user", err)
+		} else if found {
+			return AuthResponse{}, appErrors.New(http.StatusConflict, "email is already used")
+		}
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -69,6 +79,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (AuthRespon
 	user := domain.User{
 		ID:           uuid.NewString(),
 		Username:     username,
+		Email:        email,
 		PasswordHash: string(hash),
 		Role:         domain.RolePentester,
 		CreatedAt:    now,
@@ -84,12 +95,22 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (AuthRespon
 
 func (s *Service) Login(ctx context.Context, req LoginRequest) (AuthResponse, error) {
 	username := strings.ToLower(strings.TrimSpace(req.Username))
+	email := strings.ToLower(strings.TrimSpace(req.Email))
 	password := strings.TrimSpace(req.Password)
-	if username == "" || password == "" {
-		return AuthResponse{}, appErrors.New(http.StatusBadRequest, "username and password are required")
+	if err := validateLoginCredentials(username, email, password); err != nil {
+		return AuthResponse{}, appErrors.New(http.StatusBadRequest, err.Error())
 	}
 
-	user, found, err := s.users.FindByUsername(ctx, username)
+	var (
+		user  domain.User
+		found bool
+		err   error
+	)
+	if username != "" {
+		user, found, err = s.users.FindByUsername(ctx, username)
+	} else {
+		user, found, err = s.users.FindByEmail(ctx, email)
+	}
 	if err != nil {
 		return AuthResponse{}, appErrors.Wrap(http.StatusInternalServerError, "failed to read user", err)
 	}
@@ -215,6 +236,7 @@ func (s *Service) issueTokenPair(ctx context.Context, user domain.User) (AuthRes
 		User: AuthUser{
 			ID:       user.ID,
 			Username: user.Username,
+			Email:    user.Email,
 			Role:     user.Role,
 		},
 	}, nil
@@ -233,12 +255,17 @@ func generateRefreshToken() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-func validateCredentials(username, password string) error {
-	if username == "" || password == "" {
-		return appErrors.New(http.StatusBadRequest, "username and password are required")
+func validateRegisterCredentials(username, email, password string) error {
+	if username == "" || email == "" || password == "" {
+		return appErrors.New(http.StatusBadRequest, "username, email and password are required")
 	}
-	if !usernamePattern.MatchString(username) {
+	if username != "" && !usernamePattern.MatchString(username) {
 		return appErrors.New(http.StatusBadRequest, "username must be 3-32 chars and only a-z 0-9 _ . -")
+	}
+	if email != "" {
+		if _, err := mail.ParseAddress(email); err != nil {
+			return appErrors.New(http.StatusBadRequest, "email is invalid")
+		}
 	}
 	if len(password) < 8 || len(password) > 72 {
 		return appErrors.New(http.StatusBadRequest, "password must be 8-72 characters")
@@ -256,6 +283,19 @@ func validateCredentials(username, password string) error {
 	}
 	if !hasLetter || !hasDigit {
 		return appErrors.New(http.StatusBadRequest, "password must contain letters and digits")
+	}
+
+	return nil
+}
+
+func validateLoginCredentials(username, email, password string) error {
+	if (username == "" && email == "") || password == "" {
+		return appErrors.New(http.StatusBadRequest, "username or email and password are required")
+	}
+	if email != "" {
+		if _, err := mail.ParseAddress(email); err != nil {
+			return appErrors.New(http.StatusBadRequest, "email is invalid")
+		}
 	}
 
 	return nil

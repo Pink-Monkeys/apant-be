@@ -53,6 +53,7 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user domain.User) e
 	model := userModel{
 		ID:           user.ID,
 		Username:     strings.ToLower(strings.TrimSpace(user.Username)),
+		Email:        strings.ToLower(strings.TrimSpace(user.Email)),
 		PasswordHash: user.PasswordHash,
 		Role:         user.Role,
 		CreatedAt:    user.CreatedAt,
@@ -73,6 +74,23 @@ func (r *PostgresUserRepository) FindByUsername(ctx context.Context, username st
 
 	var model userModel
 	if err := r.db.DB.WithContext(ctx).Where("username = ?", username).First(&model).Error; err != nil {
+		if isNotFound(err) {
+			return domain.User{}, false, nil
+		}
+		return domain.User{}, false, err
+	}
+
+	return toDomainUser(model), true, nil
+}
+
+func (r *PostgresUserRepository) FindByEmail(ctx context.Context, email string) (domain.User, bool, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email == "" {
+		return domain.User{}, false, nil
+	}
+
+	var model userModel
+	if err := r.db.DB.WithContext(ctx).Where("email = ?", email).First(&model).Error; err != nil {
 		if isNotFound(err) {
 			return domain.User{}, false, nil
 		}
@@ -162,6 +180,7 @@ func toDomainUser(model userModel) domain.User {
 	return domain.User{
 		ID:           model.ID,
 		Username:     model.Username,
+		Email:        model.Email,
 		PasswordHash: model.PasswordHash,
 		Role:         model.Role,
 		CreatedAt:    model.CreatedAt,
