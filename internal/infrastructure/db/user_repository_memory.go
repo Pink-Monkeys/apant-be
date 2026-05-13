@@ -13,6 +13,7 @@ import (
 type MemoryUserRepository struct {
 	mu              sync.RWMutex
 	usersByUsername map[string]domain.User
+	usersByEmail    map[string]domain.User
 	usersByID       map[string]domain.User
 	tokensByHash    map[string]domain.RefreshToken
 	tokensByID      map[string]domain.RefreshToken
@@ -21,6 +22,7 @@ type MemoryUserRepository struct {
 func NewMemoryUserRepository() *MemoryUserRepository {
 	return &MemoryUserRepository{
 		usersByUsername: make(map[string]domain.User),
+		usersByEmail:    make(map[string]domain.User),
 		usersByID:       make(map[string]domain.User),
 		tokensByHash:    make(map[string]domain.RefreshToken),
 		tokensByID:      make(map[string]domain.RefreshToken),
@@ -29,6 +31,7 @@ func NewMemoryUserRepository() *MemoryUserRepository {
 
 func (r *MemoryUserRepository) Create(_ context.Context, user domain.User) error {
 	username := strings.ToLower(strings.TrimSpace(user.Username))
+	email := strings.ToLower(strings.TrimSpace(user.Email))
 	if username == "" {
 		return fmt.Errorf("username is required")
 	}
@@ -37,11 +40,20 @@ func (r *MemoryUserRepository) Create(_ context.Context, user domain.User) error
 	defer r.mu.Unlock()
 
 	if _, exists := r.usersByUsername[username]; exists {
-		return fmt.Errorf("username already exists")
+		return domain.ErrUsernameConflict
+	}
+	if email != "" {
+		if _, exists := r.usersByEmail[email]; exists {
+			return domain.ErrEmailConflict
+		}
 	}
 
 	user.Username = username
+	user.Email = email
 	r.usersByUsername[username] = user
+	if email != "" {
+		r.usersByEmail[email] = user
+	}
 	r.usersByID[user.ID] = user
 	return nil
 }
@@ -56,6 +68,23 @@ func (r *MemoryUserRepository) FindByUsername(_ context.Context, username string
 	defer r.mu.RUnlock()
 
 	user, ok := r.usersByUsername[username]
+	if !ok {
+		return domain.User{}, false, nil
+	}
+
+	return user, true, nil
+}
+
+func (r *MemoryUserRepository) FindByEmail(_ context.Context, email string) (domain.User, bool, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email == "" {
+		return domain.User{}, false, nil
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	user, ok := r.usersByEmail[email]
 	if !ok {
 		return domain.User{}, false, nil
 	}
