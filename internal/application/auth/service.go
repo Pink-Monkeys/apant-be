@@ -53,7 +53,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (AuthRespon
 	password := strings.TrimSpace(req.Password)
 
 	if err := validateRegisterCredentials(username, email, password); err != nil {
-		return AuthResponse{}, appErrors.New(http.StatusBadRequest, err.Error())
+		return AuthResponse{}, err
 	}
 
 	if _, found, err := s.users.FindByUsername(ctx, username); err != nil {
