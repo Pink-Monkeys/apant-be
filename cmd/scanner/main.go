@@ -20,11 +20,16 @@ type responseWriter struct {
 func main() {
 	port := getEnv("SCANNER_PORT", "8081")
 	nmapBinary := getEnv("NMAP_BINARY", "nmap")
-	timeout := time.Duration(getEnvInt("NMAP_TIMEOUT_SECONDS", 60)) * time.Second
 
-	executor := scanner.NewLocalNmapExecutor(scanner.LocalNmapConfig{
-		Binary:  nmapBinary,
-		Timeout: timeout,
+	nmapTimeout := time.Duration(getEnvInt("NMAP_TIMEOUT_SECONDS", 60)) * time.Second
+	toolTimeout := time.Duration(getEnvInt("SCANNER_TOOL_TIMEOUT_SECONDS", 300)) * time.Second
+
+	executor := scanner.NewMultiExecutor(scanner.MultiExecutorConfig{
+		NmapBinary:      nmapBinary,
+		NmapTimeout:     nmapTimeout,
+		Timeout:         toolTimeout,
+		NucleiTemplates: getEnv("NUCLEI_TEMPLATES_PATH", "/home/scanner/.nuclei-templates"),
+		WordlistsDir:    "/wordlists",
 	})
 
 	mux := http.NewServeMux()
@@ -61,8 +66,8 @@ func main() {
 		Addr:              ":" + port,
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       15 * time.Second,
-		WriteTimeout:      30 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      360 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
 
