@@ -27,6 +27,7 @@ func NewToolPolicy() *ToolPolicy {
 			"nuclei_scan":        true,
 			"dalfox_xss":         true,
 			"sqlmap_scan":        true,
+			"http_request":       true,
 			"mitmdump_intercept": true,
 		},
 	}
@@ -65,6 +66,8 @@ func (p *ToolPolicy) Validate(intent *domain.ToolIntent) error {
 		return validateNucleiParams(intent.Params)
 	case "sqlmap_scan":
 		return validateSqlmapParams(intent.Params)
+	case "http_request":
+		return validateHTTPRequestParams(intent.Params)
 	}
 
 	return nil
@@ -176,6 +179,34 @@ func validateSqlmapParams(params map[string]any) error {
 		}
 		if r < 1 || r > 3 {
 			return fmt.Errorf("risk must be between 1 and 3")
+		}
+	}
+
+	return nil
+}
+
+func validateHTTPRequestParams(params map[string]any) error {
+	target, _ := params["target"].(string)
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return fmt.Errorf("http_request requires target")
+	}
+	if !strings.HasPrefix(target, "http://") && !strings.HasPrefix(target, "https://") {
+		return fmt.Errorf("http_request target must start with http:// or https://")
+	}
+
+	if method, ok := params["method"].(string); ok {
+		method = strings.ToUpper(strings.TrimSpace(method))
+		allowed := map[string]bool{
+			"GET":    true,
+			"POST":   true,
+			"PUT":    true,
+			"DELETE": true,
+			"PATCH":  true,
+			"HEAD":   true,
+		}
+		if method != "" && !allowed[method] {
+			return fmt.Errorf("http_request method not allowed: %s", method)
 		}
 	}
 

@@ -58,6 +58,7 @@ func (e *HTTPScannerExecutor) Execute(intent *domain.ToolIntent) map[string]any 
 		"nuclei_scan":        true,
 		"dalfox_xss":         true,
 		"sqlmap_scan":        true,
+		"http_request":       true,
 		"mitmdump_intercept": true,
 	}
 

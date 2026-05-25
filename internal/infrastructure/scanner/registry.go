@@ -19,6 +19,7 @@ func NewRegistry() *ToolRegistry {
 			{Name: "nuclei_scan", Description: "Vulnerability scanning with templates", Enabled: true},
 			{Name: "dalfox_xss", Description: "XSS vulnerability scanning", Enabled: true},
 			{Name: "sqlmap_scan", Description: "SQL injection detection and exploitation", Enabled: true},
+			{Name: "http_request", Description: "Send custom HTTP request with custom method, headers, body, and cookies", Enabled: true},
 			{Name: "mitmdump_intercept", Description: "HTTP/HTTPS traffic interception and analysis", Enabled: false},
 		},
 	}

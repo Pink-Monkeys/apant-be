@@ -3,6 +3,8 @@ package scanner
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"os/exec"
 	"strings"
 	"time"
@@ -89,6 +91,8 @@ func (e *MultiExecutor) Execute(intent *domain.ToolIntent) map[string]any {
 		return e.executeGeneric("dalfox", intent, e.buildDalfoxArgs)
 	case "sqlmap_scan":
 		return e.executeGeneric("sqlmap", intent, e.buildSqlmapArgs)
+	case "http_request":
+		return e.executeHTTPRequest(intent)
 	case "mitmdump_intercept":
 		return e.executeGeneric("mitmdump", intent, e.buildMitmdumpArgs)
 	default:
@@ -157,6 +161,118 @@ func (e *MultiExecutor) executeGeneric(
 		"count":  len(lines),
 		"output": lines,
 		"raw":    outputStr,
+	}
+}
+
+func (e *MultiExecutor) executeHTTPRequest(intent *domain.ToolIntent) map[string]any {
+	target, _ := intent.Params["target"].(string)
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return map[string]any{"status": "error", "tool": "http_request", "error": "target is required"}
+	}
+
+	method := "GET"
+	if m, ok := intent.Params["method"].(string); ok && m != "" {
+		method = strings.ToUpper(strings.TrimSpace(m))
+	}
+
+	var bodyReader io.Reader
+	if body, ok := intent.Params["body"].(string); ok && body != "" {
+		bodyReader = strings.NewReader(body)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, method, target, bodyReader)
+	if err != nil {
+		return map[string]any{"status": "error", "tool": "http_request", "error": err.Error()}
+	}
+
+	if headers, ok := intent.Params["headers"].(map[string]any); ok {
+		for k, v := range headers {
+			if vs, ok := v.(string); ok {
+				req.Header.Set(k, vs)
+			}
+		}
+	}
+
+	if cookie, ok := intent.Params["cookie"].(string); ok && cookie != "" {
+		req.Header.Set("Cookie", cookie)
+	}
+
+	if req.Header.Get("User-Agent") == "" {
+		req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; APANT-Scanner/1.0)")
+	}
+
+	client := &http.Client{
+		Timeout: e.timeout,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return map[string]any{"status": "error", "tool": "http_request", "error": err.Error()}
+	}
+	defer resp.Body.Close()
+
+	limitedReader := io.LimitReader(resp.Body, 50*1024)
+	respBody, _ := io.ReadAll(limitedReader)
+	respBodyStr := string(respBody)
+
+	respHeaders := make(map[string]string)
+	for k, v := range resp.Header {
+		if len(v) > 0 {
+			respHeaders[k] = v[0]
+		}
+	}
+
+	successIndicators := []string{
+		"Congratulations",
+		"congratulations",
+		"solved",
+		"Solved",
+		"level solved",
+		"lab solved",
+		"You solved",
+		"you solved",
+	}
+	exploitSuccess := false
+	lowerBody := strings.ToLower(respBodyStr)
+	if !strings.Contains(lowerBody, "not solved") {
+		for _, indicator := range successIndicators {
+			if strings.Contains(respBodyStr, indicator) {
+				exploitSuccess = true
+				break
+			}
+		}
+	}
+
+	if location := resp.Header.Get("Location"); location != "" {
+		respHeaders["Location"] = location
+		if strings.Contains(strings.ToLower(location), "/my-account") {
+			exploitSuccess = true
+		}
+	}
+
+	previewLen := 50000
+	bodyPreview := respBodyStr
+	if len(bodyPreview) > previewLen {
+		bodyPreview = bodyPreview[:previewLen] + "...[truncated]"
+	}
+
+	return map[string]any{
+		"status":           "success",
+		"tool":             "http_request",
+		"target":           target,
+		"method":           method,
+		"status_code":      resp.StatusCode,
+		"response_headers": respHeaders,
+		"body_preview":     bodyPreview,
+		"body_length":      len(respBodyStr),
+		"exploit_success":  exploitSuccess,
 	}
 }
 
@@ -364,6 +480,9 @@ func (e *MultiExecutor) buildSqlmapArgs(intent *domain.ToolIntent) ([]string, er
 		fmt.Sprintf("--level=%d", level),
 		fmt.Sprintf("--risk=%d", risk),
 		"--output-dir=/home/scanner/.sqlmap/output",
+		"--flush-session",
+		"--fresh-queries",
+		"--technique=BEUST",
 	}
 
 	return args, nil
