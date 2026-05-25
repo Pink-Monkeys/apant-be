@@ -23,7 +23,9 @@ services:
     environment:
       NMAP_TIMEOUT_SECONDS: 60
       SCANNER_PORT: 8081
+      SCANNER_TOOL_TIMEOUT_SECONDS: 300
       HOME: "/home/scanner"
+      MITMPROXY_DIR: "/home/scanner/.mitmproxy"
     ports:
       - "8081:8081"
     volumes:
@@ -39,6 +41,7 @@ services:
       - /tmp:mode=1777
       - /home/scanner/.cache:uid=10001,gid=10001,mode=0700
       - /home/scanner/.config:uid=10001,gid=10001,mode=0700
+      - /home/scanner/.mitmproxy:uid=10001,gid=10001,mode=0700
       - /home/scanner/.sqlmap:uid=10001,gid=10001,mode=0700
       - /home/scanner/.local:uid=10001,gid=10001,mode=0700
       - /home/scanner/nuclei-reports:uid=10001,gid=10001,mode=0700

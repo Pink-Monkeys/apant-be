@@ -57,7 +57,7 @@ func Load() Config {
 		DBSSLMode:                getEnv("DB_SSLMODE", "disable"),
 		DBTimeZone:               getEnv("DB_TIMEZONE", "Asia/Jakarta"),
 		ScannerBaseURL:           getEnv("SCANNER_BASE_URL", "http://localhost:8081"),
-		ScannerTimeoutSeconds:    getEnvInt("SCANNER_TIMEOUT_SECONDS", 60),
+		ScannerTimeoutSeconds:    getEnvInt("SCANNER_TIMEOUT_SECONDS", 600),
 	}
 }
 
@@ -106,4 +106,3 @@ func getEnvInt(key string, fallback int) int {
 
 	return parsed
 }
-
