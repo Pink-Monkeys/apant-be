@@ -32,8 +32,9 @@ func BuildApp(cfg config.Config) (*fiber.App, string) {
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: cfg.AllowedOrigins,
-		AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization"},
-		AllowMethods: []string{"GET", "POST", "OPTIONS"},
+		AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization", "X-CSRF-Token"},
+		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowCredentials: true,
 	}))
 
 	openAIProvider := ai.NewOpenAIProvider(cfg.OpenAIAPIKey, cfg.OpenAIModel)
@@ -57,11 +58,21 @@ func BuildApp(cfg config.Config) (*fiber.App, string) {
 		time.Duration(cfg.AuthTokenTTLHours)*time.Hour,
 		time.Duration(cfg.AuthRefreshTokenTTLHours)*time.Hour,
 	)
-	authHandler := handler.NewAuthHandler(authService)
+	authHandler := handler.NewAuthHandler(authService, handler.AuthCookieConfig{
+		AccessName: cfg.AuthAccessCookieName,
+		RefreshName: cfg.AuthRefreshCookieName,
+		CSRFName:   cfg.AuthCSRFCookieName,
+		Domain:     cfg.AuthCookieDomain,
+		Path:       cfg.AuthCookiePath,
+		SameSite:   cfg.AuthCookieSameSite,
+		Secure:     cfg.AuthCookieSecure,
+		AccessTTL:  time.Duration(cfg.AuthTokenTTLHours) * time.Hour,
+		RefreshTTL: time.Duration(cfg.AuthRefreshTokenTTLHours) * time.Hour,
+	})
 	scanHandler := handler.NewScanHandler(pentestService)
 	sessionHandler := handler.NewSessionHandler(pentestService)
 
-	httpInterface.RegisterRouter(app, authHandler, scanHandler, sessionHandler, cfg.JWTSecret)
+	httpInterface.RegisterRouter(app, authHandler, scanHandler, sessionHandler, cfg.JWTSecret, cfg.AuthAccessCookieName, cfg.AuthCSRFCookieName)
 
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	return app, addr
