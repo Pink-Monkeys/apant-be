@@ -68,5 +68,18 @@ func migrations() []*gormigrate.Migration {
 				return tx.Migrator().DropColumn("users", "email")
 			},
 		},
+		{
+			ID: "20260513_add_unique_index_on_users_email",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.Exec(
+					"CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email" +
+						" ON users (email)" +
+						" WHERE email IS NOT NULL AND email <> ''",
+				).Error
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Exec("DROP INDEX IF EXISTS idx_users_email").Error
+			},
+		},
 	}
 }

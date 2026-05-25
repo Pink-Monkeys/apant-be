@@ -40,11 +40,11 @@ func (r *MemoryUserRepository) Create(_ context.Context, user domain.User) error
 	defer r.mu.Unlock()
 
 	if _, exists := r.usersByUsername[username]; exists {
-		return fmt.Errorf("username already exists")
+		return domain.ErrUsernameConflict
 	}
 	if email != "" {
 		if _, exists := r.usersByEmail[email]; exists {
-			return fmt.Errorf("email already exists")
+			return domain.ErrEmailConflict
 		}
 	}
 
