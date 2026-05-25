@@ -13,16 +13,25 @@ func RegisterRouter(
 	scan *handler.ScanHandler,
 	session *handler.SessionHandler,
 	jwtSecret string,
+	accessCookieName string,
+	csrfCookieName string,
 ) {
 	api := app.Group("/api/v1")
 
 	api.Get("/health", scan.Health)
 	api.Get("/providers", scan.Providers)
+	api.Get("/auth/csrf", auth.CSRF)
 	api.Post("/auth/register", auth.Register)
 	api.Post("/auth/login", auth.Login)
-	api.Post("/auth/refresh-token", auth.RefreshToken)
+	api.Post("/auth/refresh-token", middleware.CSRF(middleware.CSRFConfig{
+		CookieName: csrfCookieName,
+		HeaderName: "X-CSRF-Token",
+	}), auth.RefreshToken)
 
-	protected := api.Group("/", middleware.Protected(jwtSecret))
+	protected := api.Group("/", middleware.Protected(jwtSecret, accessCookieName), middleware.CSRF(middleware.CSRFConfig{
+		CookieName: csrfCookieName,
+		HeaderName: "X-CSRF-Token",
+	}))
 	protected.Post("/auth/logout", auth.Logout)
 	protected.Post("/chat", scan.Chat)
 	protected.Post("/agent/chat", scan.AgentChat)

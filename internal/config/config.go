@@ -24,6 +24,13 @@ type Config struct {
 	AuthStorage              string
 	DBHost                   string
 	DBPort                   int
+	AuthAccessCookieName     string
+	AuthRefreshCookieName    string
+	AuthCSRFCookieName       string
+	AuthCookieDomain         string
+	AuthCookiePath           string
+	AuthCookieSameSite       string
+	AuthCookieSecure         bool
 	DBUser                   string
 	DBPassword               string
 	DBName                   string
@@ -51,6 +58,13 @@ func Load() Config {
 		AuthStorage:              strings.ToLower(getEnv("AUTH_STORAGE", "memory")),
 		DBHost:                   getEnv("DB_HOST", "localhost"),
 		DBPort:                   getEnvInt("DB_PORT", 5432),
+		AuthAccessCookieName:     getEnv("AUTH_ACCESS_COOKIE_NAME", "apant_access"),
+		AuthRefreshCookieName:    getEnv("AUTH_REFRESH_COOKIE_NAME", "apant_refresh"),
+		AuthCSRFCookieName:       getEnv("AUTH_CSRF_COOKIE_NAME", "apant_csrf"),
+		AuthCookieDomain:         getEnv("AUTH_COOKIE_DOMAIN", ""),
+		AuthCookiePath:           getEnv("AUTH_COOKIE_PATH", "/"),
+		AuthCookieSameSite:       getEnv("AUTH_COOKIE_SAMESITE", "lax"),
+		AuthCookieSecure:         getEnvBool("AUTH_COOKIE_SECURE", false),
 		DBUser:                   getEnv("DB_USER", "postgres"),
 		DBPassword:               os.Getenv("DB_PASSWORD"),
 		DBName:                   getEnv("DB_NAME", "apant_be"),
@@ -100,6 +114,20 @@ func getEnvInt(key string, fallback int) int {
 	}
 
 	parsed, err := strconv.Atoi(v)
+	if err != nil {
+		return fallback
+	}
+
+	return parsed
+}
+
+func getEnvBool(key string, fallback bool) bool {
+	v := strings.TrimSpace(os.Getenv(key))
+	if v == "" {
+		return fallback
+	}
+
+	parsed, err := strconv.ParseBool(v)
 	if err != nil {
 		return fallback
 	}

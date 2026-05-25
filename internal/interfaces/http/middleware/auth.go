@@ -9,37 +9,45 @@ import (
 	"apant_be/internal/shared/httpx"
 )
 
-func Protected(jwtSecret string) fiber.Handler {
+func Protected(jwtSecret string, accessCookieName string) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		authHeader := strings.TrimSpace(c.Get("Authorization"))
-		if authHeader == "" {
-			return httpx.JSONError(c, fiber.StatusUnauthorized, "missing authorization header")
+		cookieName := strings.TrimSpace(accessCookieName)
+		if cookieName == "" {
+			cookieName = "apant_access"
 		}
 
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-			return httpx.JSONError(c, fiber.StatusUnauthorized, "invalid authorization format")
-		}
-
-		tokenStr := strings.TrimSpace(parts[1])
+		tokenStr := extractBearerToken(c)
 		if tokenStr == "" {
-			return httpx.JSONError(c, fiber.StatusUnauthorized, "empty bearer token")
+			tokenStr = strings.TrimSpace(c.Cookies(cookieName))
+		}
+		if tokenStr == "" {
+			return httpx.JSONError(c, fiber.StatusUnauthorized, "missing authorization token")
 		}
 
-		token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (any, error) {
-			if token.Method == nil || token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
-				return nil, jwt.ErrTokenSignatureInvalid
-			}
+		claims := jwt.MapClaims{}
+		_, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (any, error) {
 			return []byte(jwtSecret), nil
-		})
-		if err != nil || !token.Valid {
+		}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+		if err != nil {
 			return httpx.JSONError(c, fiber.StatusUnauthorized, "invalid or expired token")
 		}
 
-		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			c.Locals("user", claims)
-		}
+		c.Locals("user", claims)
 
 		return c.Next()
 	}
+}
+
+func extractBearerToken(c fiber.Ctx) string {
+	authHeader := strings.TrimSpace(c.Get("Authorization"))
+	if authHeader == "" {
+		return ""
+	}
+
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+		return ""
+	}
+
+	return strings.TrimSpace(parts[1])
 }
