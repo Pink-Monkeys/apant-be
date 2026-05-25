@@ -17,7 +17,18 @@ var portsPattern = regexp.MustCompile(`^[0-9,-]+$`)
 func NewToolPolicy() *ToolPolicy {
 	return &ToolPolicy{
 		allowedTools: map[string]bool{
-			"nmap_scan": true,
+			"nmap_scan":          true,
+			"httpx_probe":        true,
+			"subfinder_enum":     true,
+			"katana_crawl":       true,
+			"gau_urls":           true,
+			"waybackurls_fetch":  true,
+			"ffuf_fuzz":          true,
+			"nuclei_scan":        true,
+			"dalfox_xss":         true,
+			"sqlmap_scan":        true,
+			"http_request":       true,
+			"mitmdump_intercept": true,
 		},
 	}
 }
@@ -35,23 +46,42 @@ func (p *ToolPolicy) Validate(intent *domain.ToolIntent) error {
 		return fmt.Errorf("tool is not allowed: %s", name)
 	}
 
-	target, _ := intent.Params["target"].(string)
-	target = strings.TrimSpace(target)
-	if target == "" {
-		return fmt.Errorf("nmap_scan requires target")
-	}
-	if strings.ContainsAny(target, " \t\n\r") {
-		return fmt.Errorf("target must not contain spaces")
+	if name != "mitmdump_intercept" {
+		target, _ := intent.Params["target"].(string)
+		target = strings.TrimSpace(target)
+		if target == "" {
+			return fmt.Errorf("%s requires target", name)
+		}
+		if strings.ContainsAny(target, " \t\n\r") {
+			return fmt.Errorf("target must not contain spaces")
+		}
 	}
 
-	if ports, ok := intent.Params["ports"].(string); ok {
+	switch name {
+	case "nmap_scan":
+		return validateNmapParams(intent.Params)
+	case "ffuf_fuzz":
+		return validateFfufParams(intent.Params)
+	case "nuclei_scan":
+		return validateNucleiParams(intent.Params)
+	case "sqlmap_scan":
+		return validateSqlmapParams(intent.Params)
+	case "http_request":
+		return validateHTTPRequestParams(intent.Params)
+	}
+
+	return nil
+}
+
+func validateNmapParams(params map[string]any) error {
+	if ports, ok := params["ports"].(string); ok {
 		ports = strings.TrimSpace(ports)
 		if ports != "" && !portsPattern.MatchString(ports) {
 			return fmt.Errorf("ports must contain only digits, comma, and dash")
 		}
 	}
 
-	if topPortsRaw, ok := intent.Params["top_ports"]; ok {
+	if topPortsRaw, ok := params["top_ports"]; ok {
 		var topPorts int
 		switch v := topPortsRaw.(type) {
 		case float64:
@@ -66,9 +96,117 @@ func (p *ToolPolicy) Validate(intent *domain.ToolIntent) error {
 		}
 	}
 
-	if v, ok := intent.Params["service_detection"]; ok {
+	if v, ok := params["service_detection"]; ok {
 		if _, castOK := v.(bool); !castOK {
 			return fmt.Errorf("service_detection must be boolean")
+		}
+	}
+
+	return nil
+}
+
+func validateFfufParams(params map[string]any) error {
+	if threads, ok := params["threads"]; ok {
+		var t int
+		switch v := threads.(type) {
+		case float64:
+			t = int(v)
+		case int:
+			t = v
+		default:
+			return fmt.Errorf("threads must be a number")
+		}
+		if t < 1 || t > 200 {
+			return fmt.Errorf("threads must be between 1 and 200")
+		}
+	}
+
+	return nil
+}
+
+func validateNucleiParams(params map[string]any) error {
+	if severity, ok := params["severity"].(string); ok {
+		severity = strings.TrimSpace(strings.ToLower(severity))
+		allowed := map[string]bool{
+			"critical": true,
+			"high":     true,
+			"medium":   true,
+			"low":      true,
+			"info":     true,
+		}
+		parts := []string{severity}
+		if strings.Contains(severity, "/") {
+			parts = strings.Split(severity, "/")
+		} else if strings.Contains(severity, ",") {
+			parts = strings.Split(severity, ",")
+		}
+		for _, s := range parts {
+			s = strings.TrimSpace(s)
+			if s != "" && !allowed[s] {
+				return fmt.Errorf("invalid severity: %s", s)
+			}
+		}
+	}
+
+	return nil
+}
+
+func validateSqlmapParams(params map[string]any) error {
+	if level, ok := params["level"]; ok {
+		var l int
+		switch v := level.(type) {
+		case float64:
+			l = int(v)
+		case int:
+			l = v
+		default:
+			return fmt.Errorf("level must be a number")
+		}
+		if l < 1 || l > 5 {
+			return fmt.Errorf("level must be between 1 and 5")
+		}
+	}
+
+	if risk, ok := params["risk"]; ok {
+		var r int
+		switch v := risk.(type) {
+		case float64:
+			r = int(v)
+		case int:
+			r = v
+		default:
+			return fmt.Errorf("risk must be a number")
+		}
+		if r < 1 || r > 3 {
+			return fmt.Errorf("risk must be between 1 and 3")
+		}
+	}
+
+	return nil
+}
+
+func validateHTTPRequestParams(params map[string]any) error {
+	target, _ := params["target"].(string)
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return fmt.Errorf("http_request requires target")
+	}
+	if !strings.HasPrefix(target, "http://") && !strings.HasPrefix(target, "https://") {
+		return fmt.Errorf("http_request target must start with http:// or https://")
+	}
+
+	if method, ok := params["method"].(string); ok {
+		method = strings.ToUpper(strings.TrimSpace(method))
+		allowed := map[string]bool{
+			"GET":    true,
+			"POST":   true,
+			"PUT":    true,
+			"DELETE": true,
+			"PATCH":  true,
+			"HEAD":   true,
+		}
+		if method != "" && !allowed[method] {
+			return fmt.Errorf("http_request method not allowed: %s", method)
 		}
 	}
 

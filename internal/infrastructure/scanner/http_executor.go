@@ -29,7 +29,7 @@ func NewHTTPScannerExecutor(cfg HTTPScannerConfig) *HTTPScannerExecutor {
 
 	timeout := cfg.Timeout
 	if timeout <= 0 {
-		timeout = 60 * time.Second
+		timeout = 300 * time.Second
 	}
 
 	return &HTTPScannerExecutor{
@@ -46,7 +46,23 @@ func (e *HTTPScannerExecutor) Execute(intent *domain.ToolIntent) map[string]any 
 	}
 
 	name := strings.TrimSpace(strings.ToLower(intent.Name))
-	if name != "nmap_scan" {
+
+	allowedTools := map[string]bool{
+		"nmap_scan":          true,
+		"httpx_probe":        true,
+		"subfinder_enum":     true,
+		"katana_crawl":       true,
+		"gau_urls":           true,
+		"waybackurls_fetch":  true,
+		"ffuf_fuzz":          true,
+		"nuclei_scan":        true,
+		"dalfox_xss":         true,
+		"sqlmap_scan":        true,
+		"http_request":       true,
+		"mitmdump_intercept": true,
+	}
+
+	if !allowedTools[name] {
 		return map[string]any{
 			"status": "error",
 			"tool":   name,
