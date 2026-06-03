@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"apant_be/internal/application/pentest"
+	"apant_be/internal/interfaces/http/middleware"
 	appErrors "apant_be/internal/shared/errors"
 	"apant_be/internal/shared/httpx"
 )
@@ -72,6 +73,10 @@ func (h *ScanHandler) AgentLoop(c fiber.Ctx) error {
 	var req pentest.AgentChatRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return httpx.JSONError(c, http.StatusBadRequest, "invalid request body")
+	}
+
+	if userID, ok := middleware.GetUserID(c); ok {
+		req.UserID = userID
 	}
 
 	resp, err := h.service.AgentLoop(c.Context(), req)

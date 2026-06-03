@@ -12,6 +12,7 @@ func RegisterRouter(
 	auth *handler.AuthHandler,
 	scan *handler.ScanHandler,
 	session *handler.SessionHandler,
+	report *handler.ReportHandler,
 	jwtSecret string,
 	accessCookieName string,
 	csrfCookieName string,
@@ -42,4 +43,6 @@ func RegisterRouter(
 	protected.Post("/sessions", session.Create)
 	protected.Get("/sessions", session.List)
 	protected.Get("/sessions/:id", session.Get)
+
+	report.RegisterRoutes(protected)
 }

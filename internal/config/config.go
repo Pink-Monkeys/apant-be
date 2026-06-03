@@ -22,6 +22,7 @@ type Config struct {
 	AuthTokenTTLHours        int
 	AuthRefreshTokenTTLHours int
 	AuthStorage              string
+	ReportStorage            string
 	DBHost                   string
 	DBPort                   int
 	AuthAccessCookieName     string
@@ -56,6 +57,7 @@ func Load() Config {
 		AuthTokenTTLHours:        getEnvInt("AUTH_TOKEN_TTL_HOURS", 24),
 		AuthRefreshTokenTTLHours: getEnvInt("AUTH_REFRESH_TOKEN_TTL_HOURS", 168),
 		AuthStorage:              strings.ToLower(getEnv("AUTH_STORAGE", "memory")),
+		ReportStorage:            strings.ToLower(getEnv("REPORT_STORAGE", "memory")),
 		DBHost:                   getEnv("DB_HOST", "localhost"),
 		DBPort:                   getEnvInt("DB_PORT", 5432),
 		AuthAccessCookieName:     getEnv("AUTH_ACCESS_COOKIE_NAME", "apant_access"),
@@ -134,4 +136,3 @@ func getEnvBool(key string, fallback bool) bool {
 
 	return parsed
 }
-

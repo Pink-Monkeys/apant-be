@@ -81,5 +81,14 @@ func migrations() []*gormigrate.Migration {
 				return tx.Exec("DROP INDEX IF EXISTS idx_users_email").Error
 			},
 		},
+		{
+			ID: "20260602_create_reports_table",
+			Migrate: func(tx *gorm.DB) error {
+				return migrateReports(tx)
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable(&reportModel{})
+			},
+		},
 	}
 }
