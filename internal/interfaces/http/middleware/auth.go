@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
@@ -50,4 +51,18 @@ func extractBearerToken(c fiber.Ctx) string {
 	}
 
 	return strings.TrimSpace(parts[1])
+}
+
+func GetUserID(c fiber.Ctx) (string, bool) {
+	claims, ok := c.Locals("user").(jwt.MapClaims)
+	if !ok {
+		return "", false
+	}
+
+	userID := strings.TrimSpace(fmt.Sprint(claims["sub"]))
+	if userID == "" {
+		return "", false
+	}
+
+	return userID, true
 }
