@@ -72,6 +72,24 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  frontend:
+    build:
+      context: ../apant-fe
+      dockerfile: Dockerfile
+      target: dev
+      args:
+        VITE_API_BASE_URL: http://localhost:8000
+
+    ports:
+      - "5173:5173"
+
+    depends_on:
+      api:
+        condition: service_started
+
+    restart: unless-stopped
+  
+
 volumes:
   nuclei-templates:
   postgres-data:
