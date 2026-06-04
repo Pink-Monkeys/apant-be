@@ -52,7 +52,7 @@ func Load() Config {
 		OpenAIModel:              getEnv("OPENAI_MODEL", "gpt-5.4-mini"),
 		AnthropicKey:             os.Getenv("ANTHROPIC_API_KEY"),
 		AnthropicModel:           getEnv("ANTHROPIC_MODEL", "claude-sonnet-4-5"),
-		AllowedOrigins:           splitCSV(getEnv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000")),
+		AllowedOrigins:           splitCSV(getEnv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")),
 		JWTSecret:                getEnv("JWT_SECRET", "change-me"),
 		AuthTokenTTLHours:        getEnvInt("AUTH_TOKEN_TTL_HOURS", 24),
 		AuthRefreshTokenTTLHours: getEnvInt("AUTH_REFRESH_TOKEN_TTL_HOURS", 168),
