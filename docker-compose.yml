@@ -6,6 +6,7 @@ services:
     env_file:
       - .env
     environment:
+      DB_HOST: postgres
       SCANNER_BASE_URL: http://scanner:8081
     ports:
       - "8000:8000"
