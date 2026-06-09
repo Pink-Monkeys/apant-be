@@ -44,13 +44,16 @@ type ReportMetadata struct {
 }
 
 type ReportTargetInfo struct {
-	URL        string   `json:"url"`
-	IPAddress  string   `json:"ip_address"`
-	WebServer  string   `json:"web_server"`
-	TechStack  []string `json:"tech_stack"`
-	OpenPorts  []string `json:"open_ports"`
-	StatusCode int      `json:"status_code"`
-	PageTitle  string   `json:"page_title"`
+	URL             string   `json:"url"`
+	IPAddress       string   `json:"ip_address"`
+	WebServer       string   `json:"web_server"`
+	OperatingSystem string   `json:"operating_system"`
+	TechStack       []string `json:"tech_stack"`
+	OpenPorts       []string `json:"open_ports"`
+	StatusCode      int      `json:"status_code"`
+	Status          string   `json:"status"`
+	CDN             string   `json:"cdn"`
+	PageTitle       string   `json:"page_title"`
 }
 
 type ReportAttackSurface struct {

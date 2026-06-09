@@ -111,5 +111,17 @@ func migrations() []*gormigrate.Migration {
 				return tx.Migrator().DropColumn(&reportModel{}, "scan_id")
 			},
 		},
+		{
+			ID: "20260609_add_target_info_to_scans",
+			Migrate: func(tx *gorm.DB) error {
+				if tx.Migrator().HasColumn(&scanModel{}, "target_info") {
+					return nil
+				}
+				return tx.Migrator().AddColumn(&scanModel{}, "TargetInfo")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropColumn(&scanModel{}, "target_info")
+			},
+		},
 	}
 }

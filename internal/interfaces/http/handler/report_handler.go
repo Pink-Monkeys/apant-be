@@ -42,7 +42,7 @@ func (h *ReportHandler) CreateReport(c fiber.Ctx) error {
 		return writeError(c, err)
 	}
 
-	return httpx.JSONSuccess(c, http.StatusCreated, "report created", report)
+	return httpx.JSONSuccess(c, http.StatusCreated, "report created", pentest.NewReportResponse(report))
 }
 
 func (h *ReportHandler) ListReports(c fiber.Ctx) error {
@@ -74,7 +74,7 @@ func (h *ReportHandler) GetReport(c fiber.Ctx) error {
 		return httpx.JSONError(c, http.StatusForbidden, "access denied")
 	}
 
-	return httpx.JSONSuccess(c, http.StatusOK, "report retrieved", report)
+	return httpx.JSONSuccess(c, http.StatusOK, "report retrieved", pentest.NewReportResponse(report))
 }
 
 func (h *ReportHandler) DeleteReport(c fiber.Ctx) error {
