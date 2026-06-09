@@ -24,6 +24,7 @@ type scanModel struct {
 	Steps       []byte    `gorm:"column:steps;type:jsonb"`
 	FinalAnswer string    `gorm:"column:final_answer;type:text"`
 	Duration    string    `gorm:"column:duration;type:text"`
+	TargetInfo  []byte    `gorm:"column:target_info;type:jsonb"`
 	CreatedAt   time.Time `gorm:"column:created_at;not null"`
 	UpdatedAt   time.Time `gorm:"column:updated_at"`
 }
@@ -54,6 +55,14 @@ func (r *ScanRepositoryPostgres) Save(ctx context.Context, scan domain.Scan) err
 		return fmt.Errorf("marshal scan steps: %w", err)
 	}
 
+	var targetInfo []byte
+	if scan.TargetInfo != nil {
+		targetInfo, err = json.Marshal(scan.TargetInfo)
+		if err != nil {
+			return fmt.Errorf("marshal scan target info: %w", err)
+		}
+	}
+
 	model := scanModel{
 		ID:          scan.ID,
 		SessionID:   strings.TrimSpace(scan.SessionID),
@@ -66,6 +75,7 @@ func (r *ScanRepositoryPostgres) Save(ctx context.Context, scan domain.Scan) err
 		Steps:       steps,
 		FinalAnswer: scan.FinalAnswer,
 		Duration:    scan.Duration,
+		TargetInfo:  targetInfo,
 		CreatedAt:   scan.CreatedAt,
 		UpdatedAt:   scan.UpdatedAt,
 	}
@@ -123,6 +133,14 @@ func toDomainScan(model scanModel) (domain.Scan, error) {
 		}
 	}
 
+	var targetInfo *domain.TargetInfo
+	if len(model.TargetInfo) > 0 {
+		var ti domain.TargetInfo
+		if err := json.Unmarshal(model.TargetInfo, &ti); err == nil {
+			targetInfo = &ti
+		}
+	}
+
 	return domain.Scan{
 		ID:          model.ID,
 		SessionID:   model.SessionID,
@@ -135,6 +153,7 @@ func toDomainScan(model scanModel) (domain.Scan, error) {
 		Steps:       steps,
 		FinalAnswer: model.FinalAnswer,
 		Duration:    model.Duration,
+		TargetInfo:  targetInfo,
 		CreatedAt:   model.CreatedAt,
 		UpdatedAt:   model.UpdatedAt,
 	}, nil
