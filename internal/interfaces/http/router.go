@@ -44,5 +44,8 @@ func RegisterRouter(
 	protected.Get("/sessions", session.List)
 	protected.Get("/sessions/:id", session.Get)
 
+	protected.Get("/scans", scan.ListScans)
+	protected.Get("/scans/:id", scan.GetScan)
+
 	report.RegisterRoutes(protected)
 }

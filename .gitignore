@@ -41,3 +41,5 @@ node_modules/
 
 # Data directory (tidak perlu di-push ke git)
 data/
+
+.github/instructions/

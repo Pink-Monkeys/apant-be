@@ -23,6 +23,7 @@ type Config struct {
 	AuthRefreshTokenTTLHours int
 	AuthStorage              string
 	ReportStorage            string
+	ScanStorage              string
 	DBHost                   string
 	DBPort                   int
 	AuthAccessCookieName     string
@@ -58,6 +59,7 @@ func Load() Config {
 		AuthRefreshTokenTTLHours: getEnvInt("AUTH_REFRESH_TOKEN_TTL_HOURS", 168),
 		AuthStorage:              strings.ToLower(getEnv("AUTH_STORAGE", "memory")),
 		ReportStorage:            strings.ToLower(getEnv("REPORT_STORAGE", "memory")),
+		ScanStorage:              strings.ToLower(getEnv("SCAN_STORAGE", "memory")),
 		DBHost:                   getEnv("DB_HOST", "localhost"),
 		DBPort:                   getEnvInt("DB_PORT", 5432),
 		AuthAccessCookieName:     getEnv("AUTH_ACCESS_COOKIE_NAME", "apant_access"),

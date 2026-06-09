@@ -51,8 +51,9 @@ func BuildApp(cfg config.Config) (*fiber.App, string) {
 
 	userRepo := buildUserRepository(cfg)
 	reportRepo := buildReportRepository(cfg)
+	scanRepo := buildScanRepository(cfg)
 
-	pentestService := pentest.NewService(aiGateway, executor, policy, registry, sessionRepo, reportRepo)
+	pentestService := pentest.NewService(aiGateway, executor, policy, registry, sessionRepo, scanRepo, reportRepo)
 	authService := auth.NewService(
 		userRepo,
 		cfg.JWTSecret,
@@ -101,6 +102,29 @@ func buildUserRepository(cfg config.Config) domain.UserRepository {
 
 	log.Printf("auth storage backend: memory")
 	return db.NewMemoryUserRepository()
+}
+
+func buildScanRepository(cfg config.Config) domain.ScanRepository {
+	storage := strings.ToLower(strings.TrimSpace(cfg.ScanStorage))
+	if storage == "postgres" {
+		postgresDB, err := db.NewPostgres(cfg.PostgresDSN())
+		if err != nil {
+			log.Printf("scan storage postgres unavailable, falling back to memory: %v", err)
+			return db.NewMemoryScanRepository()
+		}
+
+		repo, err := db.NewScanRepositoryPostgres(postgresDB)
+		if err != nil {
+			log.Printf("scan repository postgres initialization failed, falling back to memory: %v", err)
+			return db.NewMemoryScanRepository()
+		}
+
+		log.Printf("scan storage backend: postgres")
+		return repo
+	}
+
+	log.Printf("scan storage backend: memory")
+	return db.NewMemoryScanRepository()
 }
 
 func buildReportRepository(cfg config.Config) domain.ReportRepository {

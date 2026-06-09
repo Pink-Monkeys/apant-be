@@ -19,10 +19,30 @@ func NewReportHandler(service *pentest.Service) *ReportHandler {
 }
 
 func (h *ReportHandler) RegisterRoutes(router fiber.Router) {
+	router.Post("/reports", h.CreateReport)
 	router.Get("/reports", h.ListReports)
 	router.Get("/reports/:id", h.GetReport)
 	router.Get("/reports/:id/pdf", h.ExportHTML)
 	router.Delete("/reports/:id", h.DeleteReport)
+}
+
+func (h *ReportHandler) CreateReport(c fiber.Ctx) error {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		return httpx.JSONError(c, http.StatusUnauthorized, "invalid auth claims")
+	}
+
+	var req pentest.CreateReportRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return httpx.JSONError(c, http.StatusBadRequest, "invalid request body")
+	}
+
+	report, err := h.service.CreateReportFromScan(c.Context(), req.ScanID, userID)
+	if err != nil {
+		return writeError(c, err)
+	}
+
+	return httpx.JSONSuccess(c, http.StatusCreated, "report created", report)
 }
 
 func (h *ReportHandler) ListReports(c fiber.Ctx) error {
