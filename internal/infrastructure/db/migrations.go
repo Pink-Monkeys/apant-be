@@ -90,5 +90,26 @@ func migrations() []*gormigrate.Migration {
 				return tx.Migrator().DropTable(&reportModel{})
 			},
 		},
+		{
+			ID: "20260608_create_scans_table",
+			Migrate: func(tx *gorm.DB) error {
+				return migrateScans(tx)
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable(&scanModel{})
+			},
+		},
+		{
+			ID: "20260608_add_scan_id_to_reports",
+			Migrate: func(tx *gorm.DB) error {
+				if tx.Migrator().HasColumn(&reportModel{}, "scan_id") {
+					return nil
+				}
+				return tx.Migrator().AddColumn(&reportModel{}, "ScanID")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropColumn(&reportModel{}, "scan_id")
+			},
+		},
 	}
 }

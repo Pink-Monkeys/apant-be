@@ -87,6 +87,34 @@ func (h *ScanHandler) AgentLoop(c fiber.Ctx) error {
 	return httpx.JSONSuccess(c, http.StatusOK, "agent loop completed successfully", resp)
 }
 
+func (h *ScanHandler) ListScans(c fiber.Ctx) error {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		return httpx.JSONError(c, http.StatusUnauthorized, "invalid auth claims")
+	}
+
+	scans, err := h.service.ListScans(c.Context(), userID)
+	if err != nil {
+		return writeError(c, err)
+	}
+
+	return httpx.JSONSuccess(c, http.StatusOK, "scans retrieved successfully", scans)
+}
+
+func (h *ScanHandler) GetScan(c fiber.Ctx) error {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		return httpx.JSONError(c, http.StatusUnauthorized, "invalid auth claims")
+	}
+
+	scan, err := h.service.GetScan(c.Context(), c.Params("id"), userID)
+	if err != nil {
+		return writeError(c, err)
+	}
+
+	return httpx.JSONSuccess(c, http.StatusOK, "scan retrieved successfully", scan)
+}
+
 func (h *ScanHandler) Tools(c fiber.Ctx) error {
 	return httpx.JSONSuccess(c, http.StatusOK, "tools retrieved successfully", fiber.Map{"tools": h.service.ListTools()})
 }

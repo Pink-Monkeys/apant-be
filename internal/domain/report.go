@@ -14,6 +14,7 @@ const (
 
 type Report struct {
 	ID        string     `json:"id"`
+	ScanID    string     `json:"scan_id"`
 	SessionID string     `json:"session_id"`
 	UserID    string     `json:"user_id"`
 	CreatedAt time.Time  `json:"created_at"`

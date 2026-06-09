@@ -6,6 +6,7 @@ import "context"
 type ScanRepository interface {
 	Save(ctx context.Context, scan Scan) error
 	FindByID(ctx context.Context, id string) (Scan, error)
+	FindByUserID(ctx context.Context, userID string) ([]Scan, error)
 }
 
 // SessionRepository defines persistence contract for session timelines.

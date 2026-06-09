@@ -14,6 +14,7 @@ import (
 
 type reportModel struct {
 	ID        string    `gorm:"column:id;type:text;primaryKey"`
+	ScanID    string    `gorm:"column:scan_id;type:text;index"`
 	SessionID string    `gorm:"column:session_id;type:text;index"`
 	UserID    string    `gorm:"column:user_id;type:text;index"`
 	Data      []byte    `gorm:"column:data;type:jsonb"`
@@ -48,6 +49,7 @@ func (r *PostgresReportRepository) Save(ctx context.Context, report domain.Repor
 
 	model := reportModel{
 		ID:        report.ID,
+		ScanID:    strings.TrimSpace(report.ScanID),
 		SessionID: strings.TrimSpace(report.SessionID),
 		UserID:    strings.TrimSpace(report.UserID),
 		Data:      data,
@@ -116,6 +118,7 @@ func toDomainReport(model reportModel) (domain.Report, error) {
 
 	return domain.Report{
 		ID:        model.ID,
+		ScanID:    model.ScanID,
 		SessionID: model.SessionID,
 		UserID:    model.UserID,
 		CreatedAt: model.CreatedAt,
