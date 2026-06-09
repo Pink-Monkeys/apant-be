@@ -123,5 +123,17 @@ func migrations() []*gormigrate.Migration {
 				return tx.Migrator().DropColumn(&scanModel{}, "target_info")
 			},
 		},
+		{
+			ID: "20260609_add_description_to_scans",
+			Migrate: func(tx *gorm.DB) error {
+				if tx.Migrator().HasColumn(&scanModel{}, "description") {
+					return nil
+				}
+				return tx.Migrator().AddColumn(&scanModel{}, "Description")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropColumn(&scanModel{}, "description")
+			},
+		},
 	}
 }
