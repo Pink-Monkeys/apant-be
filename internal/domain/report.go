@@ -34,13 +34,14 @@ type ReportData struct {
 }
 
 type ReportMetadata struct {
-	Target     string    `json:"target"`
-	ScanDate   time.Time `json:"scan_date"`
-	Duration   string    `json:"duration"`
-	Provider   string    `json:"provider"`
-	Model      string    `json:"model"`
-	ToolsUsed  []string  `json:"tools_used"`
-	TotalSteps int       `json:"total_steps"`
+	Target      string    `json:"target"`
+	Description string    `json:"description,omitempty"`
+	ScanDate    time.Time `json:"scan_date"`
+	Duration    string    `json:"duration"`
+	Provider    string    `json:"provider"`
+	Model       string    `json:"model"`
+	ToolsUsed   []string  `json:"tools_used"`
+	TotalSteps  int       `json:"total_steps"`
 }
 
 type ReportTargetInfo struct {
