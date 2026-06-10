@@ -135,5 +135,59 @@ func migrations() []*gormigrate.Migration {
 				return tx.Migrator().DropColumn(&scanModel{}, "description")
 			},
 		},
+		{
+			ID: "20260610_split_reports_data_columns",
+			Migrate: func(tx *gorm.DB) error {
+				if err := tx.AutoMigrate(&reportModel{}); err != nil {
+					return err
+				}
+				if !tx.Migrator().HasColumn(&reportModel{}, "data") {
+					return nil
+				}
+				if err := tx.Exec(`UPDATE reports SET
+					title = data->>'title',
+					overall_severity = data->>'overall_severity',
+					executive_summary = data->>'executive_summary',
+					conclusion = data->>'conclusion',
+					metadata = data->'metadata',
+					target_info = data->'target_info',
+					attack_surface = data->'attack_surface',
+					vulnerabilities = data->'vulnerabilities',
+					statistics = data->'statistics'`).Error; err != nil {
+					return err
+				}
+				return tx.Exec(`ALTER TABLE reports DROP COLUMN IF EXISTS data`).Error
+			},
+			Rollback: func(tx *gorm.DB) error {
+				if tx.Migrator().HasColumn(&reportModel{}, "data") {
+					return nil
+				}
+				if err := tx.Exec(`ALTER TABLE reports ADD COLUMN data jsonb`).Error; err != nil {
+					return err
+				}
+				if err := tx.Exec(`UPDATE reports SET data = jsonb_build_object(
+					'title', title,
+					'overall_severity', overall_severity,
+					'metadata', metadata,
+					'executive_summary', executive_summary,
+					'target_info', target_info,
+					'attack_surface', attack_surface,
+					'vulnerabilities', vulnerabilities,
+					'statistics', statistics,
+					'conclusion', conclusion
+				)`).Error; err != nil {
+					return err
+				}
+				for _, col := range []string{
+					"title", "overall_severity", "executive_summary", "conclusion",
+					"metadata", "target_info", "attack_surface", "vulnerabilities", "statistics",
+				} {
+					if err := tx.Exec("ALTER TABLE reports DROP COLUMN IF EXISTS " + col).Error; err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
 	}
 }
