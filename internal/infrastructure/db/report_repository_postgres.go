@@ -13,12 +13,20 @@ import (
 )
 
 type reportModel struct {
-	ID        string    `gorm:"column:id;type:text;primaryKey"`
-	ScanID    string    `gorm:"column:scan_id;type:text;index"`
-	SessionID string    `gorm:"column:session_id;type:text;index"`
-	UserID    string    `gorm:"column:user_id;type:text;index"`
-	Data      []byte    `gorm:"column:data;type:jsonb"`
-	CreatedAt time.Time `gorm:"column:created_at;not null"`
+	ID               string    `gorm:"column:id;type:text;primaryKey"`
+	ScanID           string    `gorm:"column:scan_id;type:text;index"`
+	SessionID        string    `gorm:"column:session_id;type:text;index"`
+	UserID           string    `gorm:"column:user_id;type:text;index"`
+	Title            string    `gorm:"column:title;type:text"`
+	OverallSeverity  string    `gorm:"column:overall_severity;type:text"`
+	ExecutiveSummary string    `gorm:"column:executive_summary;type:text"`
+	Conclusion       string    `gorm:"column:conclusion;type:text"`
+	Metadata         []byte    `gorm:"column:metadata;type:jsonb"`
+	TargetInfo       []byte    `gorm:"column:target_info;type:jsonb"`
+	AttackSurface    []byte    `gorm:"column:attack_surface;type:jsonb"`
+	Vulnerabilities  []byte    `gorm:"column:vulnerabilities;type:jsonb"`
+	Statistics       []byte    `gorm:"column:statistics;type:jsonb"`
+	CreatedAt        time.Time `gorm:"column:created_at;not null"`
 }
 
 func (reportModel) TableName() string {
@@ -42,18 +50,42 @@ func (r *PostgresReportRepository) Save(ctx context.Context, report domain.Repor
 		return fmt.Errorf("report id is required")
 	}
 
-	data, err := json.Marshal(report.Data)
+	metadata, err := json.Marshal(report.Data.Metadata)
 	if err != nil {
-		return fmt.Errorf("marshal report data: %w", err)
+		return fmt.Errorf("marshal report metadata: %w", err)
+	}
+	targetInfo, err := json.Marshal(report.Data.TargetInfo)
+	if err != nil {
+		return fmt.Errorf("marshal report target info: %w", err)
+	}
+	attackSurface, err := json.Marshal(report.Data.AttackSurface)
+	if err != nil {
+		return fmt.Errorf("marshal report attack surface: %w", err)
+	}
+	vulnerabilities, err := json.Marshal(report.Data.Vulnerabilities)
+	if err != nil {
+		return fmt.Errorf("marshal report vulnerabilities: %w", err)
+	}
+	statistics, err := json.Marshal(report.Data.Statistics)
+	if err != nil {
+		return fmt.Errorf("marshal report statistics: %w", err)
 	}
 
 	model := reportModel{
-		ID:        report.ID,
-		ScanID:    strings.TrimSpace(report.ScanID),
-		SessionID: strings.TrimSpace(report.SessionID),
-		UserID:    strings.TrimSpace(report.UserID),
-		Data:      data,
-		CreatedAt: report.CreatedAt,
+		ID:               report.ID,
+		ScanID:           strings.TrimSpace(report.ScanID),
+		SessionID:        strings.TrimSpace(report.SessionID),
+		UserID:           strings.TrimSpace(report.UserID),
+		Title:            report.Data.Title,
+		OverallSeverity:  string(report.Data.OverallSeverity),
+		ExecutiveSummary: report.Data.ExecutiveSummary,
+		Conclusion:       report.Data.Conclusion,
+		Metadata:         metadata,
+		TargetInfo:       targetInfo,
+		AttackSurface:    attackSurface,
+		Vulnerabilities:  vulnerabilities,
+		Statistics:       statistics,
+		CreatedAt:        report.CreatedAt,
 	}
 
 	return r.db.DB.WithContext(ctx).Create(&model).Error
@@ -111,9 +143,37 @@ func (r *PostgresReportRepository) DeleteByID(ctx context.Context, id string) er
 }
 
 func toDomainReport(model reportModel) (domain.Report, error) {
-	var data domain.ReportData
-	if err := json.Unmarshal(model.Data, &data); err != nil {
-		return domain.Report{}, fmt.Errorf("unmarshal report data: %w", err)
+	data := domain.ReportData{
+		Title:            model.Title,
+		OverallSeverity:  domain.ReportSeverity(model.OverallSeverity),
+		ExecutiveSummary: model.ExecutiveSummary,
+		Conclusion:       model.Conclusion,
+	}
+
+	if len(model.Metadata) > 0 {
+		if err := json.Unmarshal(model.Metadata, &data.Metadata); err != nil {
+			return domain.Report{}, fmt.Errorf("unmarshal report metadata: %w", err)
+		}
+	}
+	if len(model.TargetInfo) > 0 {
+		if err := json.Unmarshal(model.TargetInfo, &data.TargetInfo); err != nil {
+			return domain.Report{}, fmt.Errorf("unmarshal report target info: %w", err)
+		}
+	}
+	if len(model.AttackSurface) > 0 {
+		if err := json.Unmarshal(model.AttackSurface, &data.AttackSurface); err != nil {
+			return domain.Report{}, fmt.Errorf("unmarshal report attack surface: %w", err)
+		}
+	}
+	if len(model.Vulnerabilities) > 0 {
+		if err := json.Unmarshal(model.Vulnerabilities, &data.Vulnerabilities); err != nil {
+			return domain.Report{}, fmt.Errorf("unmarshal report vulnerabilities: %w", err)
+		}
+	}
+	if len(model.Statistics) > 0 {
+		if err := json.Unmarshal(model.Statistics, &data.Statistics); err != nil {
+			return domain.Report{}, fmt.Errorf("unmarshal report statistics: %w", err)
+		}
 	}
 
 	return domain.Report{
