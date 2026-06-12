@@ -119,6 +119,10 @@ func (h *ScanHandler) Tools(c fiber.Ctx) error {
 	return httpx.JSONSuccess(c, http.StatusOK, "tools retrieved successfully", fiber.Map{"tools": h.service.ListTools()})
 }
 
+func (h *ScanHandler) ScanTypes(c fiber.Ctx) error {
+	return httpx.JSONSuccess(c, http.StatusOK, "scan types retrieved successfully", fiber.Map{"scan_types": h.service.ScanTypes()})
+}
+
 func writeError(c fiber.Ctx, err error) error {
 	code, msg := appErrors.Resolve(err)
 	return httpx.JSONError(c, code, msg)

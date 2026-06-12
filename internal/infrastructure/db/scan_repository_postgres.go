@@ -21,6 +21,7 @@ type scanModel struct {
 	Model       string    `gorm:"column:model;type:text"`
 	Message     string    `gorm:"column:message;type:text"`
 	Description string    `gorm:"column:description;type:text"`
+	ScanType    string    `gorm:"column:scan_type;type:text"`
 	Status      string    `gorm:"column:status;type:text"`
 	Steps       []byte    `gorm:"column:steps;type:jsonb"`
 	FinalAnswer string    `gorm:"column:final_answer;type:text"`
@@ -73,6 +74,7 @@ func (r *ScanRepositoryPostgres) Save(ctx context.Context, scan domain.Scan) err
 		Model:       scan.Model,
 		Message:     scan.Message,
 		Description: scan.Description,
+		ScanType:    scan.ScanType,
 		Status:      scan.Status,
 		Steps:       steps,
 		FinalAnswer: scan.FinalAnswer,
@@ -152,6 +154,7 @@ func toDomainScan(model scanModel) (domain.Scan, error) {
 		Model:       model.Model,
 		Message:     model.Message,
 		Description: model.Description,
+		ScanType:    model.ScanType,
 		Status:      model.Status,
 		Steps:       steps,
 		FinalAnswer: model.FinalAnswer,

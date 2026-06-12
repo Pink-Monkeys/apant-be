@@ -45,21 +45,26 @@ type Config struct {
 func Load() Config {
 	_ = godotenv.Load()
 
+	// STORAGE is the single source of truth for the persistence backend. The
+	// per-component vars (AUTH/SCAN/REPORT_STORAGE) default to it so they cannot
+	// silently diverge — set STORAGE=memory only for tests/dev-without-db.
+	storage := strings.ToLower(strings.TrimSpace(getEnv("STORAGE", "postgres")))
+
 	return Config{
 		AppName:                  getEnv("APP_NAME", "apant_be"),
 		Port:                     getEnv("PORT", "8000"),
 		AppEnv:                   getEnv("APP_ENV", "development"),
 		OpenAIAPIKey:             os.Getenv("OPENAI_API_KEY"),
-		OpenAIModel:              getEnv("OPENAI_MODEL", "gpt-5.4-mini"),
+		OpenAIModel:              getEnv("OPENAI_MODEL", "gpt-5.4"),
 		AnthropicKey:             os.Getenv("ANTHROPIC_API_KEY"),
 		AnthropicModel:           getEnv("ANTHROPIC_MODEL", "claude-sonnet-4-5"),
 		AllowedOrigins:           splitCSV(getEnv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")),
 		JWTSecret:                getEnv("JWT_SECRET", "change-me"),
 		AuthTokenTTLHours:        getEnvInt("AUTH_TOKEN_TTL_HOURS", 24),
 		AuthRefreshTokenTTLHours: getEnvInt("AUTH_REFRESH_TOKEN_TTL_HOURS", 168),
-		AuthStorage:              strings.ToLower(getEnv("AUTH_STORAGE", "memory")),
-		ReportStorage:            strings.ToLower(getEnv("REPORT_STORAGE", "memory")),
-		ScanStorage:              strings.ToLower(getEnv("SCAN_STORAGE", "memory")),
+		AuthStorage:              strings.ToLower(strings.TrimSpace(getEnv("AUTH_STORAGE", storage))),
+		ReportStorage:            strings.ToLower(strings.TrimSpace(getEnv("REPORT_STORAGE", storage))),
+		ScanStorage:              strings.ToLower(strings.TrimSpace(getEnv("SCAN_STORAGE", storage))),
 		DBHost:                   getEnv("DB_HOST", "localhost"),
 		DBPort:                   getEnvInt("DB_PORT", 5432),
 		AuthAccessCookieName:     getEnv("AUTH_ACCESS_COOKIE_NAME", "apant_access"),

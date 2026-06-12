@@ -14,6 +14,7 @@ type Scan struct {
 	Model       string      `json:"model"`
 	Message     string      `json:"message"`
 	Description string      `json:"description,omitempty"`
+	ScanType    string      `json:"scan_type,omitempty"`
 	Status      string      `json:"status"`
 	Steps       []ScanStep  `json:"steps"`
 	FinalAnswer string      `json:"final_answer"`

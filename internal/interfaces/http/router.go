@@ -39,6 +39,7 @@ func RegisterRouter(
 	protected.Post("/agent/execute", scan.AgentExecute)
 	protected.Post("/agent/loop", scan.AgentLoop)
 	protected.Get("/tools", scan.Tools)
+	protected.Get("/scan-types", scan.ScanTypes)
 
 	protected.Post("/sessions", session.Create)
 	protected.Get("/sessions", session.List)

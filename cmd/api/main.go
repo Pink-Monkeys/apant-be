@@ -9,7 +9,10 @@ import (
 
 func main() {
 	cfg := config.Load()
-	app, addr := bootstrap.BuildApp(cfg)
+	app, addr, err := bootstrap.BuildApp(cfg)
+	if err != nil {
+		log.Fatalf("failed to build app: %v", err)
+	}
 	log.Printf("starting %s on %s", cfg.AppName, addr)
 	log.Fatal(app.Listen(addr))
 }
