@@ -36,6 +36,7 @@ type ReportData struct {
 type ReportMetadata struct {
 	Target      string    `json:"target"`
 	Description string    `json:"description,omitempty"`
+	ScanType    string    `json:"scan_type,omitempty"`
 	ScanDate    time.Time `json:"scan_date"`
 	Duration    string    `json:"duration"`
 	Provider    string    `json:"provider"`

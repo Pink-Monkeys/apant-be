@@ -136,6 +136,18 @@ func migrations() []*gormigrate.Migration {
 			},
 		},
 		{
+			ID: "20260610_add_scan_type_to_scans",
+			Migrate: func(tx *gorm.DB) error {
+				if tx.Migrator().HasColumn(&scanModel{}, "scan_type") {
+					return nil
+				}
+				return tx.Migrator().AddColumn(&scanModel{}, "ScanType")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropColumn(&scanModel{}, "scan_type")
+			},
+		},
+		{
 			ID: "20260610_split_reports_data_columns",
 			Migrate: func(tx *gorm.DB) error {
 				if err := tx.AutoMigrate(&reportModel{}); err != nil {
