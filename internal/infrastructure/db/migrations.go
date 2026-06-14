@@ -148,6 +148,18 @@ func migrations() []*gormigrate.Migration {
 			},
 		},
 		{
+			ID: "20260610_add_mitigation_to_reports",
+			Migrate: func(tx *gorm.DB) error {
+				if tx.Migrator().HasColumn(&reportModel{}, "mitigation") {
+					return nil
+				}
+				return tx.Migrator().AddColumn(&reportModel{}, "Mitigation")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropColumn(&reportModel{}, "mitigation")
+			},
+		},
+		{
 			ID: "20260610_split_reports_data_columns",
 			Migrate: func(tx *gorm.DB) error {
 				if err := tx.AutoMigrate(&reportModel{}); err != nil {

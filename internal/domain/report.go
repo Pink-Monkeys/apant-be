@@ -30,6 +30,7 @@ type ReportData struct {
 	AttackSurface    ReportAttackSurface `json:"attack_surface"`
 	Vulnerabilities  []ReportVuln        `json:"vulnerabilities"`
 	Statistics       ReportStats         `json:"statistics"`
+	Mitigation       string              `json:"mitigation,omitempty"`
 	Conclusion       string              `json:"conclusion"`
 }
 

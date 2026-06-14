@@ -20,6 +20,7 @@ type reportModel struct {
 	Title            string    `gorm:"column:title;type:text"`
 	OverallSeverity  string    `gorm:"column:overall_severity;type:text"`
 	ExecutiveSummary string    `gorm:"column:executive_summary;type:text"`
+	Mitigation       string    `gorm:"column:mitigation;type:text"`
 	Conclusion       string    `gorm:"column:conclusion;type:text"`
 	Metadata         []byte    `gorm:"column:metadata;type:jsonb"`
 	TargetInfo       []byte    `gorm:"column:target_info;type:jsonb"`
@@ -79,6 +80,7 @@ func (r *PostgresReportRepository) Save(ctx context.Context, report domain.Repor
 		Title:            report.Data.Title,
 		OverallSeverity:  string(report.Data.OverallSeverity),
 		ExecutiveSummary: report.Data.ExecutiveSummary,
+		Mitigation:       report.Data.Mitigation,
 		Conclusion:       report.Data.Conclusion,
 		Metadata:         metadata,
 		TargetInfo:       targetInfo,
@@ -147,6 +149,7 @@ func toDomainReport(model reportModel) (domain.Report, error) {
 		Title:            model.Title,
 		OverallSeverity:  domain.ReportSeverity(model.OverallSeverity),
 		ExecutiveSummary: model.ExecutiveSummary,
+		Mitigation:       model.Mitigation,
 		Conclusion:       model.Conclusion,
 	}
 
