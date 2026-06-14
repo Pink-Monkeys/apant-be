@@ -44,3 +44,8 @@ type ToolPolicy interface {
 type ToolRegistry interface {
 	List() []ToolInfo
 }
+
+// PDFConverter renders an HTML document into PDF bytes.
+type PDFConverter interface {
+	HTMLToPDF(ctx context.Context, html []byte) ([]byte, error)
+}

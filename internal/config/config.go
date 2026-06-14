@@ -40,6 +40,7 @@ type Config struct {
 	DBTimeZone               string
 	ScannerBaseURL           string
 	ScannerTimeoutSeconds    int
+	GotenbergURL             string
 }
 
 func Load() Config {
@@ -81,6 +82,7 @@ func Load() Config {
 		DBTimeZone:               getEnv("DB_TIMEZONE", "Asia/Jakarta"),
 		ScannerBaseURL:           getEnv("SCANNER_BASE_URL", "http://localhost:8081"),
 		ScannerTimeoutSeconds:    getEnvInt("SCANNER_TIMEOUT_SECONDS", 600),
+		GotenbergURL:             getEnv("GOTENBERG_URL", "http://gotenberg:3000"),
 	}
 }
 
