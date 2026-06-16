@@ -64,6 +64,9 @@ type ReportAttackSurface struct {
 	URLsCrawled            int `json:"urls_crawled"`
 	ParameterizedEndpoints int `json:"parameterized_endpoints"`
 	OpenPortsCount         int `json:"open_ports_count"`
+	// FilesAnalyzed is the number of source files examined in a static (SAST)
+	// scan. Omitted for dynamic (DAST) scans.
+	FilesAnalyzed int `json:"files_analyzed,omitempty"`
 }
 
 type ReportVuln struct {
@@ -78,6 +81,20 @@ type ReportVuln struct {
 	Recommendation string         `json:"recommendation"`
 	Verified       bool           `json:"verified"`
 	CVSSScore      float64        `json:"cvss_score,omitempty"`
+
+	// CodeLocation is populated for static (SAST) findings: the precise file and
+	// line span in the analyzed source tree. Empty for dynamic (DAST) findings.
+	CodeLocation *ReportCodeLocation `json:"code_location,omitempty"`
+}
+
+// ReportCodeLocation pinpoints a SAST finding in the uploaded source tree. Paths
+// are always relative to the repository root (never absolute server paths).
+type ReportCodeLocation struct {
+	FilePath    string `json:"file_path"`
+	LineStart   int    `json:"line_start"`
+	LineEnd     int    `json:"line_end,omitempty"`
+	CodeSnippet string `json:"code_snippet,omitempty"`
+	RuleID      string `json:"rule_id,omitempty"`
 }
 
 type ReportPoC struct {

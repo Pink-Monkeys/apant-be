@@ -21,6 +21,12 @@ func NewRegistry() *ToolRegistry {
 			{Name: "sqlmap_scan", Description: "SQL injection detection and exploitation", Enabled: true},
 			{Name: "http_request", Description: "Send custom HTTP request with custom method, headers, body, and cookies", Enabled: true},
 			{Name: "mitmdump_intercept", Description: "HTTP/HTTPS traffic interception and analysis", Enabled: false},
+			{Name: "semgrep_scan", Description: "Static analysis (SAST) over an uploaded source tree using Semgrep rulesets", Enabled: true},
+			{Name: "gitleaks_scan", Description: "Detect hardcoded secrets and credentials in source code", Enabled: true},
+			{Name: "osv_scan", Description: "Software composition analysis: known CVEs in declared dependencies", Enabled: true},
+			{Name: "list_files", Description: "List files in the uploaded source tree", Enabled: true},
+			{Name: "read_file", Description: "Read a file from the uploaded source tree (optionally a line range)", Enabled: true},
+			{Name: "grep_code", Description: "Search the uploaded source tree for a regex pattern", Enabled: true},
 		},
 	}
 }

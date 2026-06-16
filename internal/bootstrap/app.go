@@ -22,9 +22,18 @@ import (
 )
 
 func BuildApp(cfg config.Config) (*fiber.App, string, error) {
+	// BodyLimit must accommodate the largest allowed source upload (plus a small
+	// multipart overhead) or fiber rejects the request before the handler runs.
+	bodyLimit := int(cfg.StaticMaxUploadBytes) + 1*1024*1024
+
+	// Timeouts are generous: static (SAST) and dynamic (agent loop) scans run
+	// synchronously and can take a couple of minutes, and the SAST upload can be
+	// tens of MB. ReadTimeout covers reading the upload; WriteTimeout covers the
+	// long-running scan before the response is written.
 	app := fiber.New(fiber.Config{
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 60 * time.Second,
+		ReadTimeout:  300 * time.Second,
+		WriteTimeout: 600 * time.Second,
+		BodyLimit:    bodyLimit,
 	})
 
 	app.Use(recover.New())
@@ -72,6 +81,11 @@ func BuildApp(cfg config.Config) (*fiber.App, string, error) {
 	}
 
 	pentestService := pentest.NewService(aiGateway, executor, policy, registry, sessionRepo, scanRepo, reportRepo)
+	pentestService.ConfigureStatic(pentest.StaticConfig{
+		WorkspaceDir:  cfg.WorkspaceDir,
+		MaxFiles:      cfg.StaticMaxFiles,
+		MaxTotalBytes: cfg.StaticMaxTotalBytes,
+	})
 	authService := auth.NewService(
 		userRepo,
 		cfg.JWTSecret,
