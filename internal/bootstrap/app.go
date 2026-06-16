@@ -16,7 +16,6 @@ import (
 	"apant_be/internal/domain"
 	"apant_be/internal/infrastructure/ai"
 	"apant_be/internal/infrastructure/db"
-	"apant_be/internal/infrastructure/pdf"
 	"apant_be/internal/infrastructure/scanner"
 	httpInterface "apant_be/internal/interfaces/http"
 	"apant_be/internal/interfaces/http/handler"
@@ -72,9 +71,7 @@ func BuildApp(cfg config.Config) (*fiber.App, string, error) {
 		return nil, "", err
 	}
 
-	pdfConverter := pdf.NewGotenbergConverter(cfg.GotenbergURL)
-
-	pentestService := pentest.NewService(aiGateway, executor, policy, registry, sessionRepo, scanRepo, reportRepo, pdfConverter)
+	pentestService := pentest.NewService(aiGateway, executor, policy, registry, sessionRepo, scanRepo, reportRepo)
 	authService := auth.NewService(
 		userRepo,
 		cfg.JWTSecret,

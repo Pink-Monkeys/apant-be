@@ -8,7 +8,6 @@ services:
     environment:
       DB_HOST: postgres
       SCANNER_BASE_URL: http://scanner:8081
-      GOTENBERG_URL: http://gotenberg:3000
     ports:
       - "8000:8000"
     depends_on:
@@ -16,8 +15,6 @@ services:
         condition: service_healthy
       scanner:
         condition: service_healthy
-      gotenberg:
-        condition: service_started
     restart: unless-stopped
 
   postgres:
@@ -74,10 +71,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
-    restart: unless-stopped
-
-  gotenberg:
-    image: gotenberg/gotenberg:8
     restart: unless-stopped
 
   frontend:

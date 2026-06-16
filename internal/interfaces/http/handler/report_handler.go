@@ -22,8 +22,6 @@ func (h *ReportHandler) RegisterRoutes(router fiber.Router) {
 	router.Post("/reports", h.CreateReport)
 	router.Get("/reports", h.ListReports)
 	router.Get("/reports/:id", h.GetReport)
-	router.Get("/reports/:id/pdf", h.ExportPDF)
-	router.Get("/reports/:id/html", h.ExportHTML)
 	router.Delete("/reports/:id", h.DeleteReport)
 }
 
@@ -98,54 +96,4 @@ func (h *ReportHandler) DeleteReport(c fiber.Ctx) error {
 	}
 
 	return httpx.JSONSuccess(c, http.StatusOK, "report deleted", fiber.Map{})
-}
-
-func (h *ReportHandler) ExportHTML(c fiber.Ctx) error {
-	userID, ok := middleware.GetUserID(c)
-	if !ok {
-		return httpx.JSONError(c, http.StatusUnauthorized, "invalid auth claims")
-	}
-
-	id := c.Params("id")
-	report, err := h.service.GetReport(c.Context(), id)
-	if err != nil {
-		return httpx.JSONError(c, http.StatusNotFound, "report not found")
-	}
-	if report.UserID != "" && report.UserID != userID {
-		return httpx.JSONError(c, http.StatusForbidden, "access denied")
-	}
-
-	htmlBytes, err := h.service.ExportReportHTML(c.Context(), id)
-	if err != nil {
-		return httpx.JSONError(c, http.StatusInternalServerError, "failed to generate report")
-	}
-
-	c.Set("Content-Type", "text/html; charset=utf-8")
-	c.Set("Content-Disposition", "attachment; filename=report-"+id+".html")
-	return c.Send(htmlBytes)
-}
-
-func (h *ReportHandler) ExportPDF(c fiber.Ctx) error {
-	userID, ok := middleware.GetUserID(c)
-	if !ok {
-		return httpx.JSONError(c, http.StatusUnauthorized, "invalid auth claims")
-	}
-
-	id := c.Params("id")
-	report, err := h.service.GetReport(c.Context(), id)
-	if err != nil {
-		return httpx.JSONError(c, http.StatusNotFound, "report not found")
-	}
-	if report.UserID != "" && report.UserID != userID {
-		return httpx.JSONError(c, http.StatusForbidden, "access denied")
-	}
-
-	pdfBytes, err := h.service.ExportReportPDF(c.Context(), id)
-	if err != nil {
-		return writeError(c, err)
-	}
-
-	c.Set("Content-Type", "application/pdf")
-	c.Set("Content-Disposition", "attachment; filename=report-"+id+".pdf")
-	return c.Send(pdfBytes)
 }
