@@ -8,8 +8,11 @@ services:
     environment:
       DB_HOST: postgres
       SCANNER_BASE_URL: http://scanner:8081
+      WORKSPACE_DIR: /workspace
     ports:
       - "8000:8000"
+    volumes:
+      - workspace:/workspace
     depends_on:
       postgres:
         condition: service_healthy
@@ -46,11 +49,14 @@ services:
       SCANNER_TOOL_TIMEOUT_SECONDS: 300
       HOME: "/home/scanner"
       MITMPROXY_DIR: "/home/scanner/.mitmproxy"
+      SCANNER_WORKSPACE_DIR: /workspace
+      SEMGREP_CONFIG: /opt/semgrep-rules
     ports:
       - "8081:8081"
     volumes:
       - ./data/wordlists:/wordlists:ro
       - nuclei-templates:/home/scanner/.nuclei-templates
+      - workspace:/workspace:ro
     cap_add:
       - NET_RAW
       - NET_ADMIN
@@ -64,6 +70,7 @@ services:
       - /home/scanner/.mitmproxy:uid=10001,gid=10001,mode=0700
       - /home/scanner/.sqlmap:uid=10001,gid=10001,mode=0700
       - /home/scanner/.local:uid=10001,gid=10001,mode=0700
+      - /home/scanner/.semgrep:uid=10001,gid=10001,mode=0700
       - /home/scanner/nuclei-reports:uid=10001,gid=10001,mode=0700
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
@@ -94,3 +101,4 @@ services:
 volumes:
   nuclei-templates:
   postgres-data:
+  workspace:

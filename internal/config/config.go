@@ -40,6 +40,10 @@ type Config struct {
 	DBTimeZone               string
 	ScannerBaseURL           string
 	ScannerTimeoutSeconds    int
+	WorkspaceDir             string
+	StaticMaxUploadBytes     int64
+	StaticMaxFiles           int
+	StaticMaxTotalBytes      int64
 }
 
 func Load() Config {
@@ -81,6 +85,10 @@ func Load() Config {
 		DBTimeZone:               getEnv("DB_TIMEZONE", "Asia/Jakarta"),
 		ScannerBaseURL:           getEnv("SCANNER_BASE_URL", "http://localhost:8081"),
 		ScannerTimeoutSeconds:    getEnvInt("SCANNER_TIMEOUT_SECONDS", 600),
+		WorkspaceDir:             getEnv("WORKSPACE_DIR", "/workspace"),
+		StaticMaxUploadBytes:     getEnvInt64("STATIC_MAX_UPLOAD_BYTES", 50*1024*1024),
+		StaticMaxFiles:           getEnvInt("STATIC_MAX_FILES", 20000),
+		StaticMaxTotalBytes:      getEnvInt64("STATIC_MAX_TOTAL_BYTES", 300*1024*1024),
 	}
 }
 
@@ -123,6 +131,20 @@ func getEnvInt(key string, fallback int) int {
 	}
 
 	parsed, err := strconv.Atoi(v)
+	if err != nil {
+		return fallback
+	}
+
+	return parsed
+}
+
+func getEnvInt64(key string, fallback int64) int64 {
+	v := strings.TrimSpace(os.Getenv(key))
+	if v == "" {
+		return fallback
+	}
+
+	parsed, err := strconv.ParseInt(v, 10, 64)
 	if err != nil {
 		return fallback
 	}

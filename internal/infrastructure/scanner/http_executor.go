@@ -60,6 +60,12 @@ func (e *HTTPScannerExecutor) Execute(intent *domain.ToolIntent) map[string]any 
 		"sqlmap_scan":        true,
 		"http_request":       true,
 		"mitmdump_intercept": true,
+		"semgrep_scan":       true,
+		"gitleaks_scan":      true,
+		"osv_scan":           true,
+		"list_files":         true,
+		"read_file":          true,
+		"grep_code":          true,
 	}
 
 	if !allowedTools[name] {

@@ -13,6 +13,18 @@ type ToolPolicy struct {
 }
 
 var portsPattern = regexp.MustCompile(`^[0-9,-]+$`)
+var scanIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
+
+// staticTools operate on an uploaded source tree instead of a network target, so
+// they are exempt from the target/host validation the dynamic tools require.
+var staticTools = map[string]bool{
+	"semgrep_scan":  true,
+	"gitleaks_scan": true,
+	"osv_scan":      true,
+	"list_files":    true,
+	"read_file":     true,
+	"grep_code":     true,
+}
 
 func NewToolPolicy() *ToolPolicy {
 	return &ToolPolicy{
@@ -29,6 +41,12 @@ func NewToolPolicy() *ToolPolicy {
 			"sqlmap_scan":        true,
 			"http_request":       true,
 			"mitmdump_intercept": true,
+			"semgrep_scan":       true,
+			"gitleaks_scan":      true,
+			"osv_scan":           true,
+			"list_files":         true,
+			"read_file":          true,
+			"grep_code":          true,
 		},
 	}
 }
@@ -44,6 +62,10 @@ func (p *ToolPolicy) Validate(intent *domain.ToolIntent) error {
 	}
 	if !p.allowedTools[name] {
 		return fmt.Errorf("tool is not allowed: %s", name)
+	}
+
+	if staticTools[name] {
+		return validateStaticParams(name, intent.Params)
 	}
 
 	if name != "mitmdump_intercept" {
@@ -179,6 +201,34 @@ func validateSqlmapParams(params map[string]any) error {
 		}
 		if r < 1 || r > 3 {
 			return fmt.Errorf("risk must be between 1 and 3")
+		}
+	}
+
+	return nil
+}
+
+// validateStaticParams enforces that SAST tools carry a well-formed scan_id (the
+// API injects this; it must never be attacker-controlled to a different value)
+// and that each tool's required parameters are present. Path containment itself
+// is enforced again in the scanner executor — this is the first of two gates.
+func validateStaticParams(name string, params map[string]any) error {
+	scanID, _ := params["scan_id"].(string)
+	scanID = strings.TrimSpace(scanID)
+	if scanID == "" {
+		return fmt.Errorf("%s requires scan_id", name)
+	}
+	if !scanIDPattern.MatchString(scanID) {
+		return fmt.Errorf("invalid scan_id")
+	}
+
+	switch name {
+	case "read_file":
+		if path, _ := params["path"].(string); strings.TrimSpace(path) == "" {
+			return fmt.Errorf("read_file requires path")
+		}
+	case "grep_code":
+		if pattern, _ := params["pattern"].(string); strings.TrimSpace(pattern) == "" {
+			return fmt.Errorf("grep_code requires pattern")
 		}
 	}
 

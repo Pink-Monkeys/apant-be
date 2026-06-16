@@ -30,6 +30,8 @@ func main() {
 		Timeout:         toolTimeout,
 		NucleiTemplates: getEnv("NUCLEI_TEMPLATES_PATH", "/home/scanner/.nuclei-templates"),
 		WordlistsDir:    "/wordlists",
+		WorkspaceRoot:   getEnv("SCANNER_WORKSPACE_DIR", "/workspace"),
+		SemgrepConfig:   getEnv("SEMGREP_CONFIG", "/opt/semgrep-rules"),
 	})
 
 	mux := http.NewServeMux()

@@ -25,7 +25,9 @@ RUN CGO_ENABLED=1 GOBIN=/out/tools go install github.com/ffuf/ffuf/v2@latest && 
     CGO_ENABLED=1 GOBIN=/out/tools go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest && \
     CGO_ENABLED=1 GOBIN=/out/tools go install github.com/hahwul/dalfox/v2@latest && \
     CGO_ENABLED=1 GOBIN=/out/tools go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest && \
-    CGO_ENABLED=1 GOBIN=/out/tools go install github.com/projectdiscovery/katana/cmd/katana@latest
+    CGO_ENABLED=1 GOBIN=/out/tools go install github.com/projectdiscovery/katana/cmd/katana@latest && \
+    CGO_ENABLED=0 GOBIN=/out/tools go install github.com/zricethezav/gitleaks/v8@latest && \
+    CGO_ENABLED=0 GOBIN=/out/tools go install github.com/google/osv-scanner/cmd/osv-scanner@v1.9.2
 
 FROM debian:stable-slim
 WORKDIR /app
@@ -41,6 +43,7 @@ RUN apt-get update && \
     libcap2-bin \
     python3 \
     python3-venv \
+    ripgrep \
     curl \
     jq \
     git \
@@ -50,6 +53,11 @@ RUN apt-get update && \
     && ln -s /opt/mitmproxy-venv/bin/mitmproxy /usr/local/bin/mitmproxy \
     && ln -s /opt/mitmproxy-venv/bin/mitmdump /usr/local/bin/mitmdump \
     && ln -s /opt/mitmproxy-venv/bin/mitmweb /usr/local/bin/mitmweb \
+    && python3 -m venv /opt/semgrep-venv \
+    && /opt/semgrep-venv/bin/pip install --no-cache-dir semgrep \
+    && ln -s /opt/semgrep-venv/bin/semgrep /usr/local/bin/semgrep \
+    && git clone --depth 1 https://github.com/semgrep/semgrep-rules.git /opt/semgrep-rules \
+    && rm -rf /opt/semgrep-rules/.git \
     && git clone --depth 1 https://github.com/sqlmapproject/sqlmap.git /opt/sqlmap \
     && ln -s /opt/sqlmap/sqlmap.py /usr/local/bin/sqlmap \
     && chmod +x /opt/sqlmap/sqlmap.py \
@@ -86,6 +94,8 @@ ENV SCANNER_PORT=8081
 ENV NMAP_BINARY=nmap
 ENV NUCLEI_TEMPLATES_PATH=/home/scanner/.nuclei-templates
 ENV HOME=/home/scanner
+ENV SEMGREP_CONFIG=/opt/semgrep-rules
+ENV SCANNER_WORKSPACE_DIR=/workspace
 EXPOSE 8081
 
 USER scanner

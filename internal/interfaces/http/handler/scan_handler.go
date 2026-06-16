@@ -2,8 +2,13 @@ package handler
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 
 	"apant_be/internal/application/pentest"
 	"apant_be/internal/interfaces/http/middleware"
@@ -85,6 +90,54 @@ func (h *ScanHandler) AgentLoop(c fiber.Ctx) error {
 	}
 
 	return httpx.JSONSuccess(c, http.StatusOK, "agent loop completed successfully", resp)
+}
+
+// StaticScan accepts a multipart upload of source code (a .zip archive) and runs
+// a SAST analysis synchronously, returning the full result once complete —
+// mirroring the dynamic /agent/loop flow.
+func (h *ScanHandler) StaticScan(c fiber.Ctx) error {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		return httpx.JSONError(c, http.StatusUnauthorized, "invalid auth claims")
+	}
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		return httpx.JSONError(c, http.StatusBadRequest, "a source archive must be uploaded in the 'file' field")
+	}
+
+	if !strings.HasSuffix(strings.ToLower(fileHeader.Filename), ".zip") {
+		return httpx.JSONError(c, http.StatusBadRequest, "only .zip archives are supported")
+	}
+
+	// Persist the upload to a private temp file; the service takes ownership and
+	// removes it after extraction.
+	tmpPath := filepath.Join(os.TempDir(), "apant-upload-"+uuid.NewString()+".zip")
+	if err := c.SaveFile(fileHeader, tmpPath); err != nil {
+		return httpx.JSONError(c, http.StatusInternalServerError, "failed to store upload")
+	}
+
+	maxSteps := 0
+	if v := strings.TrimSpace(c.FormValue("max_steps")); v != "" {
+		maxSteps, _ = strconv.Atoi(v)
+	}
+
+	resp, err := h.service.StaticScan(c.Context(), pentest.StaticScanRequest{
+		UserID:      userID,
+		SessionID:   strings.TrimSpace(c.FormValue("session_id")),
+		Provider:    c.FormValue("provider"),
+		Model:       c.FormValue("model"),
+		Description: c.FormValue("description"),
+		MaxSteps:    maxSteps,
+		SourceName:  fileHeader.Filename,
+		ZipPath:     tmpPath,
+	})
+	if err != nil {
+		// StaticScan removes the temp file and workspace on its own error paths.
+		return writeError(c, err)
+	}
+
+	return httpx.JSONSuccess(c, http.StatusOK, "static scan completed", resp)
 }
 
 func (h *ScanHandler) ListScans(c fiber.Ctx) error {

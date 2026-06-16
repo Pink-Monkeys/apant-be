@@ -18,6 +18,8 @@ type MultiExecutorConfig struct {
 	Timeout         time.Duration
 	NucleiTemplates string
 	WordlistsDir    string
+	WorkspaceRoot   string
+	SemgrepConfig   string
 }
 
 type MultiExecutor struct {
@@ -26,6 +28,8 @@ type MultiExecutor struct {
 	timeout         time.Duration
 	nucleiTemplates string
 	wordlistsDir    string
+	workspaceRoot   string
+	semgrepConfig   string
 }
 
 func NewMultiExecutor(cfg MultiExecutorConfig) *MultiExecutor {
@@ -54,12 +58,24 @@ func NewMultiExecutor(cfg MultiExecutorConfig) *MultiExecutor {
 		wordlistsDir = "/wordlists"
 	}
 
+	workspaceRoot := strings.TrimSpace(cfg.WorkspaceRoot)
+	if workspaceRoot == "" {
+		workspaceRoot = "/workspace"
+	}
+
+	semgrepConfig := strings.TrimSpace(cfg.SemgrepConfig)
+	if semgrepConfig == "" {
+		semgrepConfig = "/opt/semgrep-rules"
+	}
+
 	return &MultiExecutor{
 		nmapBinary:      nmapBinary,
 		nmapTimeout:     nmapTimeout,
 		timeout:         timeout,
 		nucleiTemplates: nucleiTemplates,
 		wordlistsDir:    wordlistsDir,
+		workspaceRoot:   workspaceRoot,
+		semgrepConfig:   semgrepConfig,
 	}
 }
 
@@ -95,6 +111,18 @@ func (e *MultiExecutor) Execute(intent *domain.ToolIntent) map[string]any {
 		return e.executeHTTPRequest(intent)
 	case "mitmdump_intercept":
 		return e.executeGeneric("mitmdump", intent, e.buildMitmdumpArgs)
+	case "semgrep_scan":
+		return e.executeSemgrep(intent)
+	case "gitleaks_scan":
+		return e.executeGitleaks(intent)
+	case "osv_scan":
+		return e.executeOSVScan(intent)
+	case "list_files":
+		return e.executeListFiles(intent)
+	case "read_file":
+		return e.executeReadFile(intent)
+	case "grep_code":
+		return e.executeGrepCode(intent)
 	default:
 		return map[string]any{"status": "error", "tool": name, "error": "tool not implemented"}
 	}

@@ -10,6 +10,7 @@ import (
 	"apant_be/internal/domain"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type scanModel struct {
@@ -84,7 +85,13 @@ func (r *ScanRepositoryPostgres) Save(ctx context.Context, scan domain.Scan) err
 		UpdatedAt:   scan.UpdatedAt,
 	}
 
-	return r.db.DB.WithContext(ctx).Create(&model).Error
+	// Upsert: a scan is first saved as "running" then re-saved as
+	// "completed"/"failed" by the background static scanner, so Save must be
+	// idempotent on the primary key rather than failing on conflict.
+	return r.db.DB.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "id"}},
+		UpdateAll: true,
+	}).Create(&model).Error
 }
 
 func (r *ScanRepositoryPostgres) FindByID(ctx context.Context, id string) (domain.Scan, error) {
