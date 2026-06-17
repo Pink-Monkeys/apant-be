@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 
@@ -316,6 +317,40 @@ func parseLines(output string) []string {
 	return result
 }
 
+// authFromParams extracts the session cookie and custom headers injected for an
+// authenticated scan, so each tool can forward them in its own flag format.
+func authFromParams(params map[string]any) (cookie string, headers []string) {
+	cookie, _ = params["cookie"].(string)
+	cookie = strings.TrimSpace(cookie)
+
+	if h, ok := params["headers"].(map[string]any); ok {
+		keys := make([]string, 0, len(h))
+		for k := range h {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			if v, ok := h[k].(string); ok && strings.TrimSpace(v) != "" {
+				headers = append(headers, k+": "+strings.TrimSpace(v))
+			}
+		}
+	}
+	return cookie, headers
+}
+
+// appendAuthAsHeaders forwards auth via a single header flag (e.g. "-H"), for
+// tools without a dedicated cookie option (httpx, katana, nuclei).
+func appendAuthAsHeaders(args []string, headerFlag string, params map[string]any) []string {
+	cookie, headers := authFromParams(params)
+	for _, h := range headers {
+		args = append(args, headerFlag, h)
+	}
+	if cookie != "" {
+		args = append(args, headerFlag, "Cookie: "+cookie)
+	}
+	return args
+}
+
 func (e *MultiExecutor) buildHttpxArgs(intent *domain.ToolIntent) ([]string, error) {
 	target, _ := intent.Params["target"].(string)
 	target = strings.TrimSpace(target)
@@ -328,6 +363,8 @@ func (e *MultiExecutor) buildHttpxArgs(intent *domain.ToolIntent) ([]string, err
 	if followRedirects, ok := intent.Params["follow_redirects"].(bool); ok && followRedirects {
 		args = append(args, "-follow-redirects")
 	}
+
+	args = appendAuthAsHeaders(args, "-H", intent.Params)
 
 	return args, nil
 }
@@ -366,6 +403,7 @@ func (e *MultiExecutor) buildKatanaArgs(intent *domain.ToolIntent) ([]string, er
 	}
 
 	args := []string{"-u", target, "-depth", fmt.Sprintf("%d", depth), "-silent"}
+	args = appendAuthAsHeaders(args, "-H", intent.Params)
 
 	return args, nil
 }
@@ -456,6 +494,8 @@ func (e *MultiExecutor) buildNucleiArgs(intent *domain.ToolIntent) ([]string, er
 		args = append(args, "-severity", severity)
 	}
 
+	args = appendAuthAsHeaders(args, "-H", intent.Params)
+
 	return args, nil
 }
 
@@ -468,8 +508,12 @@ func (e *MultiExecutor) buildDalfoxArgs(intent *domain.ToolIntent) ([]string, er
 
 	args := []string{"url", target, "--silence"}
 
-	if cookie, ok := intent.Params["cookie"].(string); ok && cookie != "" {
-		args = append(args, "--cookie", strings.TrimSpace(cookie))
+	cookie, headers := authFromParams(intent.Params)
+	if cookie != "" {
+		args = append(args, "--cookie", cookie)
+	}
+	for _, h := range headers {
+		args = append(args, "-H", h)
 	}
 
 	return args, nil
@@ -511,6 +555,14 @@ func (e *MultiExecutor) buildSqlmapArgs(intent *domain.ToolIntent) ([]string, er
 		"--flush-session",
 		"--fresh-queries",
 		"--technique=BEUST",
+	}
+
+	cookie, headers := authFromParams(intent.Params)
+	if cookie != "" {
+		args = append(args, "--cookie="+cookie)
+	}
+	if len(headers) > 0 {
+		args = append(args, "--headers="+strings.Join(headers, "\n"))
 	}
 
 	return args, nil
