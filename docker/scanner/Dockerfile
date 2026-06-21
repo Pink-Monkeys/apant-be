@@ -10,15 +10,11 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates tzdata git build-essential && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-COPY go.mod go.sum ./
-RUN go mod download
-
-COPY . .
-
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -trimpath -ldflags="-s -w" -o /out/apant-scanner ./cmd/scanner
-
-RUN CGO_ENABLED=1 GOBIN=/out/tools go install github.com/ffuf/ffuf/v2@latest && \
+# Install third-party scanner tools BEFORE copying app source, so changing Go code
+# does not invalidate this slow, network-heavy layer (it stays cached).
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=1 GOBIN=/out/tools go install github.com/ffuf/ffuf/v2@latest && \
     CGO_ENABLED=1 GOBIN=/out/tools go install github.com/lc/gau/v2/cmd/gau@latest && \
     CGO_ENABLED=1 GOBIN=/out/tools go install github.com/tomnomnom/waybackurls@latest && \
     CGO_ENABLED=1 GOBIN=/out/tools go install github.com/projectdiscovery/httpx/cmd/httpx@latest && \
@@ -28,6 +24,16 @@ RUN CGO_ENABLED=1 GOBIN=/out/tools go install github.com/ffuf/ffuf/v2@latest && 
     CGO_ENABLED=1 GOBIN=/out/tools go install github.com/projectdiscovery/katana/cmd/katana@latest && \
     CGO_ENABLED=0 GOBIN=/out/tools go install github.com/zricethezav/gitleaks/v8@latest && \
     CGO_ENABLED=0 GOBIN=/out/tools go install github.com/google/osv-scanner/cmd/osv-scanner@v1.9.2
+
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+
+COPY . .
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -trimpath -ldflags="-s -w" -o /out/apant-scanner ./cmd/scanner
 
 FROM debian:stable-slim
 WORKDIR /app
