@@ -160,6 +160,18 @@ func migrations() []*gormigrate.Migration {
 			},
 		},
 		{
+			ID: "20260622_add_session_started_at_to_refresh_tokens",
+			Migrate: func(tx *gorm.DB) error {
+				if tx.Migrator().HasColumn(&refreshTokenModel{}, "session_started_at") {
+					return nil
+				}
+				return tx.Migrator().AddColumn(&refreshTokenModel{}, "SessionStartedAt")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropColumn(&refreshTokenModel{}, "session_started_at")
+			},
+		},
+		{
 			ID: "20260610_split_reports_data_columns",
 			Migrate: func(tx *gorm.DB) error {
 				if err := tx.AutoMigrate(&reportModel{}); err != nil {

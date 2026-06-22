@@ -89,8 +89,9 @@ func BuildApp(cfg config.Config) (*fiber.App, string, error) {
 	authService := auth.NewService(
 		userRepo,
 		cfg.JWTSecret,
-		time.Duration(cfg.AuthTokenTTLHours)*time.Hour,
+		time.Duration(cfg.AuthAccessTokenTTLMinutes)*time.Minute,
 		time.Duration(cfg.AuthRefreshTokenTTLHours)*time.Hour,
+		time.Duration(cfg.AuthAbsoluteSessionTTLHours)*time.Hour,
 	)
 	authHandler := handler.NewAuthHandler(authService, handler.AuthCookieConfig{
 		AccessName:  cfg.AuthAccessCookieName,
@@ -100,7 +101,7 @@ func BuildApp(cfg config.Config) (*fiber.App, string, error) {
 		Path:        cfg.AuthCookiePath,
 		SameSite:    cfg.AuthCookieSameSite,
 		Secure:      cfg.AuthCookieSecure,
-		AccessTTL:   time.Duration(cfg.AuthTokenTTLHours) * time.Hour,
+		AccessTTL:   time.Duration(cfg.AuthAccessTokenTTLMinutes) * time.Minute,
 		RefreshTTL:  time.Duration(cfg.AuthRefreshTokenTTLHours) * time.Hour,
 	})
 	scanHandler := handler.NewScanHandler(pentestService)

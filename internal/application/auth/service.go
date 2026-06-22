@@ -25,26 +25,32 @@ import (
 var usernamePattern = regexp.MustCompile(`^[a-z0-9_.-]{3,32}$`)
 
 type Service struct {
-	users           domain.UserRepository
-	jwtSecret       []byte
-	accessTokenTTL  time.Duration
-	refreshTokenTTL time.Duration
+	users              domain.UserRepository
+	jwtSecret          []byte
+	accessTokenTTL     time.Duration
+	refreshTokenTTL    time.Duration
+	absoluteSessionTTL time.Duration
 }
 
-func NewService(users domain.UserRepository, jwtSecret string, accessTokenTTL, refreshTokenTTL time.Duration) *Service {
+func NewService(users domain.UserRepository, jwtSecret string, accessTokenTTL, refreshTokenTTL, absoluteSessionTTL time.Duration) *Service {
 	if accessTokenTTL <= 0 {
-		accessTokenTTL = 24 * time.Hour
+		accessTokenTTL = 15 * time.Minute
 	}
 
 	if refreshTokenTTL <= 0 {
 		refreshTokenTTL = 7 * 24 * time.Hour
 	}
 
+	if absoluteSessionTTL <= 0 {
+		absoluteSessionTTL = 30 * 24 * time.Hour
+	}
+
 	return &Service{
-		users:           users,
-		jwtSecret:       []byte(strings.TrimSpace(jwtSecret)),
-		accessTokenTTL:  accessTokenTTL,
-		refreshTokenTTL: refreshTokenTTL,
+		users:              users,
+		jwtSecret:          []byte(strings.TrimSpace(jwtSecret)),
+		accessTokenTTL:     accessTokenTTL,
+		refreshTokenTTL:    refreshTokenTTL,
+		absoluteSessionTTL: absoluteSessionTTL,
 	}
 }
 
@@ -97,7 +103,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (AuthRespon
 		return AuthResponse{}, appErrors.Wrap(http.StatusInternalServerError, "failed to create user", err)
 	}
 
-	return s.issueTokenPair(ctx, user)
+	return s.issueTokenPair(ctx, user, time.Now())
 }
 
 func (s *Service) Login(ctx context.Context, req LoginRequest) (AuthResponse, error) {
@@ -129,7 +135,7 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (AuthResponse, er
 		return AuthResponse{}, appErrors.New(http.StatusUnauthorized, "invalid credentials")
 	}
 
-	return s.issueTokenPair(ctx, user)
+	return s.issueTokenPair(ctx, user, time.Now())
 }
 
 func (s *Service) RefreshToken(ctx context.Context, req RefreshTokenRequest) (AuthResponse, error) {
@@ -148,12 +154,27 @@ func (s *Service) RefreshToken(ctx context.Context, req RefreshTokenRequest) (Au
 	}
 
 	if storedToken.RevokedAt != nil {
+		// A revoked token presented again means it was already rotated — a strong
+		// signal of theft. Revoke the whole token family so both the attacker and
+		// the legitimate user are forced to log in again (OWASP reuse detection).
+		_ = s.users.RevokeUserRefreshTokens(ctx, storedToken.UserID)
 		return AuthResponse{}, appErrors.New(http.StatusUnauthorized, "refresh token has been revoked")
 	}
 
 	if time.Now().After(storedToken.ExpiresAt) {
 		_ = s.users.RevokeRefreshToken(ctx, storedToken.ID)
 		return AuthResponse{}, appErrors.New(http.StatusUnauthorized, "refresh token has expired")
+	}
+
+	// Absolute session cap: the refresh window may slide, but never beyond a hard
+	// limit measured from the original login, forcing a periodic re-login.
+	sessionStart := storedToken.SessionStartedAt
+	if sessionStart.IsZero() {
+		sessionStart = storedToken.CreatedAt
+	}
+	if time.Since(sessionStart) > s.absoluteSessionTTL {
+		_ = s.users.RevokeUserRefreshTokens(ctx, storedToken.UserID)
+		return AuthResponse{}, appErrors.New(http.StatusUnauthorized, "session expired, please log in again")
 	}
 
 	user, found, err := s.users.FindByID(ctx, storedToken.UserID)
@@ -168,7 +189,7 @@ func (s *Service) RefreshToken(ctx context.Context, req RefreshTokenRequest) (Au
 		return AuthResponse{}, appErrors.Wrap(http.StatusInternalServerError, "failed to rotate refresh token", err)
 	}
 
-	return s.issueTokenPair(ctx, user)
+	return s.issueTokenPair(ctx, user, sessionStart)
 }
 
 func (s *Service) Logout(ctx context.Context, userID string, req LogoutRequest) error {
@@ -310,15 +331,18 @@ func (s *Service) ChangePassword(ctx context.Context, userID string, req ChangeP
 	}
 
 	user.PasswordHash = string(hash)
-	return s.issueTokenPair(ctx, user)
+	return s.issueTokenPair(ctx, user, time.Now())
 }
 
-func (s *Service) issueTokenPair(ctx context.Context, user domain.User) (AuthResponse, error) {
+func (s *Service) issueTokenPair(ctx context.Context, user domain.User, sessionStartedAt time.Time) (AuthResponse, error) {
 	if len(s.jwtSecret) == 0 {
 		return AuthResponse{}, appErrors.New(http.StatusInternalServerError, "jwt secret is not configured")
 	}
 
 	now := time.Now()
+	if sessionStartedAt.IsZero() {
+		sessionStartedAt = now
+	}
 	expiresAt := now.Add(s.accessTokenTTL)
 	claims := jwt.MapClaims{
 		"sub":  user.ID,
@@ -340,12 +364,13 @@ func (s *Service) issueTokenPair(ctx context.Context, user domain.User) (AuthRes
 	}
 
 	refreshToken := domain.RefreshToken{
-		ID:        uuid.NewString(),
-		UserID:    user.ID,
-		TokenHash: hashToken(rawRefreshToken),
-		ExpiresAt: now.Add(s.refreshTokenTTL),
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:               uuid.NewString(),
+		UserID:           user.ID,
+		TokenHash:        hashToken(rawRefreshToken),
+		ExpiresAt:        now.Add(s.refreshTokenTTL),
+		SessionStartedAt: sessionStartedAt,
+		CreatedAt:        now,
+		UpdatedAt:        now,
 	}
 
 	if err := s.users.CreateRefreshToken(ctx, refreshToken); err != nil {
