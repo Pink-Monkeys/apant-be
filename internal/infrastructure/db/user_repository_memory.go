@@ -109,6 +109,76 @@ func (r *MemoryUserRepository) FindByID(_ context.Context, id string) (domain.Us
 	return user, true, nil
 }
 
+func (r *MemoryUserRepository) UpdateProfile(_ context.Context, userID, username, email string) error {
+	userID = strings.TrimSpace(userID)
+	username = strings.ToLower(strings.TrimSpace(username))
+	email = strings.ToLower(strings.TrimSpace(email))
+	if userID == "" {
+		return fmt.Errorf("user id is required")
+	}
+	if username == "" {
+		return fmt.Errorf("username is required")
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	user, ok := r.usersByID[userID]
+	if !ok {
+		return fmt.Errorf("user not found")
+	}
+
+	if existing, exists := r.usersByUsername[username]; exists && existing.ID != userID {
+		return domain.ErrUsernameConflict
+	}
+	if email != "" {
+		if existing, exists := r.usersByEmail[email]; exists && existing.ID != userID {
+			return domain.ErrEmailConflict
+		}
+	}
+
+	delete(r.usersByUsername, strings.ToLower(strings.TrimSpace(user.Username)))
+	if oldEmail := strings.ToLower(strings.TrimSpace(user.Email)); oldEmail != "" {
+		delete(r.usersByEmail, oldEmail)
+	}
+
+	user.Username = username
+	user.Email = email
+	user.UpdatedAt = time.Now()
+	r.usersByUsername[username] = user
+	if email != "" {
+		r.usersByEmail[email] = user
+	}
+	r.usersByID[userID] = user
+	return nil
+}
+
+func (r *MemoryUserRepository) UpdatePassword(_ context.Context, userID, passwordHash string) error {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return fmt.Errorf("user id is required")
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	user, ok := r.usersByID[userID]
+	if !ok {
+		return fmt.Errorf("user not found")
+	}
+
+	user.PasswordHash = passwordHash
+	user.UpdatedAt = time.Now()
+	r.usersByID[userID] = user
+	if uname := strings.ToLower(strings.TrimSpace(user.Username)); uname != "" {
+		r.usersByUsername[uname] = user
+	}
+	if email := strings.ToLower(strings.TrimSpace(user.Email)); email != "" {
+		r.usersByEmail[email] = user
+	}
+	return nil
+}
+
 func (r *MemoryUserRepository) CreateRefreshToken(_ context.Context, token domain.RefreshToken) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

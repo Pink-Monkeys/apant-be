@@ -196,6 +196,123 @@ func (s *Service) Logout(ctx context.Context, userID string, req LogoutRequest) 
 	return nil
 }
 
+func (s *Service) Me(ctx context.Context, userID string) (AuthUser, error) {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return AuthUser{}, appErrors.New(http.StatusUnauthorized, "invalid token subject")
+	}
+
+	user, found, err := s.users.FindByID(ctx, userID)
+	if err != nil {
+		return AuthUser{}, appErrors.Wrap(http.StatusInternalServerError, "failed to load user", err)
+	}
+	if !found {
+		return AuthUser{}, appErrors.New(http.StatusNotFound, "user not found")
+	}
+
+	return AuthUser{ID: user.ID, Username: user.Username, Email: user.Email, Role: user.Role}, nil
+}
+
+func (s *Service) UpdateProfile(ctx context.Context, userID string, req UpdateProfileRequest) (AuthUser, error) {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return AuthUser{}, appErrors.New(http.StatusUnauthorized, "invalid token subject")
+	}
+
+	username := strings.ToLower(strings.TrimSpace(req.Username))
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	if username == "" || email == "" {
+		return AuthUser{}, appErrors.New(http.StatusBadRequest, "username and email are required")
+	}
+	if !usernamePattern.MatchString(username) {
+		return AuthUser{}, appErrors.New(http.StatusBadRequest, "username must be 3-32 chars and only a-z 0-9 _ . -")
+	}
+	if _, err := mail.ParseAddress(email); err != nil {
+		return AuthUser{}, appErrors.New(http.StatusBadRequest, "email is invalid")
+	}
+
+	current, found, err := s.users.FindByID(ctx, userID)
+	if err != nil {
+		return AuthUser{}, appErrors.Wrap(http.StatusInternalServerError, "failed to load user", err)
+	}
+	if !found {
+		return AuthUser{}, appErrors.New(http.StatusNotFound, "user not found")
+	}
+
+	if other, found, err := s.users.FindByUsername(ctx, username); err != nil {
+		return AuthUser{}, appErrors.Wrap(http.StatusInternalServerError, "failed to read user", err)
+	} else if found && other.ID != userID {
+		return AuthUser{}, appErrors.New(http.StatusConflict, "username is already used")
+	}
+	if other, found, err := s.users.FindByEmail(ctx, email); err != nil {
+		return AuthUser{}, appErrors.Wrap(http.StatusInternalServerError, "failed to read user", err)
+	} else if found && other.ID != userID {
+		return AuthUser{}, appErrors.New(http.StatusConflict, "email is already used")
+	}
+
+	if err := s.users.UpdateProfile(ctx, userID, username, email); err != nil {
+		if errors.Is(err, domain.ErrUsernameConflict) {
+			return AuthUser{}, appErrors.New(http.StatusConflict, "username is already used")
+		}
+		if errors.Is(err, domain.ErrEmailConflict) {
+			return AuthUser{}, appErrors.New(http.StatusConflict, "email is already used")
+		}
+		return AuthUser{}, appErrors.Wrap(http.StatusInternalServerError, "failed to update profile", err)
+	}
+
+	return AuthUser{ID: userID, Username: username, Email: email, Role: current.Role}, nil
+}
+
+// ChangePassword verifies the current password, sets a new one, revokes every
+// existing refresh token (logging out all other devices), then issues a fresh
+// token pair so the current device stays authenticated.
+func (s *Service) ChangePassword(ctx context.Context, userID string, req ChangePasswordRequest) (AuthResponse, error) {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return AuthResponse{}, appErrors.New(http.StatusUnauthorized, "invalid token subject")
+	}
+
+	currentPassword := strings.TrimSpace(req.CurrentPassword)
+	newPassword := strings.TrimSpace(req.NewPassword)
+	if currentPassword == "" || newPassword == "" {
+		return AuthResponse{}, appErrors.New(http.StatusBadRequest, "current_password and new_password are required")
+	}
+	if err := validatePassword(newPassword); err != nil {
+		return AuthResponse{}, err
+	}
+
+	user, found, err := s.users.FindByID(ctx, userID)
+	if err != nil {
+		return AuthResponse{}, appErrors.Wrap(http.StatusInternalServerError, "failed to load user", err)
+	}
+	if !found {
+		return AuthResponse{}, appErrors.New(http.StatusNotFound, "user not found")
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(currentPassword)); err != nil {
+		return AuthResponse{}, appErrors.New(http.StatusUnauthorized, "current password is incorrect")
+	}
+	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(newPassword)) == nil {
+		return AuthResponse{}, appErrors.New(http.StatusBadRequest, "new password must be different from the current password")
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return AuthResponse{}, appErrors.Wrap(http.StatusInternalServerError, "failed to secure password", err)
+	}
+
+	if err := s.users.UpdatePassword(ctx, userID, string(hash)); err != nil {
+		return AuthResponse{}, appErrors.Wrap(http.StatusInternalServerError, "failed to update password", err)
+	}
+
+	if err := s.users.RevokeUserRefreshTokens(ctx, userID); err != nil {
+		return AuthResponse{}, appErrors.Wrap(http.StatusInternalServerError, "failed to revoke sessions", err)
+	}
+
+	user.PasswordHash = string(hash)
+	return s.issueTokenPair(ctx, user)
+}
+
 func (s *Service) issueTokenPair(ctx context.Context, user domain.User) (AuthResponse, error) {
 	if len(s.jwtSecret) == 0 {
 		return AuthResponse{}, appErrors.New(http.StatusInternalServerError, "jwt secret is not configured")
@@ -274,6 +391,14 @@ func validateRegisterCredentials(username, email, password string) error {
 			return appErrors.New(http.StatusBadRequest, "email is invalid")
 		}
 	}
+	if err := validatePassword(password); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validatePassword(password string) error {
 	if len(password) < 8 || len(password) > 72 {
 		return appErrors.New(http.StatusBadRequest, "password must be 8-72 characters")
 	}

@@ -137,6 +137,76 @@ func (h *AuthHandler) Logout(c fiber.Ctx) error {
 	return httpx.JSONSuccess(c, http.StatusOK, "logout successful", fiber.Map{})
 }
 
+func (h *AuthHandler) Me(c fiber.Ctx) error {
+	userID, ok := userIDFromClaims(c)
+	if !ok {
+		return httpx.JSONError(c, fiber.StatusUnauthorized, "invalid auth claims")
+	}
+
+	user, err := h.service.Me(c.Context(), userID)
+	if err != nil {
+		return writeAuthError(c, err)
+	}
+
+	return httpx.JSONSuccess(c, http.StatusOK, "profile retrieved", fiber.Map{"user": user})
+}
+
+func (h *AuthHandler) UpdateProfile(c fiber.Ctx) error {
+	userID, ok := userIDFromClaims(c)
+	if !ok {
+		return httpx.JSONError(c, fiber.StatusUnauthorized, "invalid auth claims")
+	}
+
+	var req auth.UpdateProfileRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return httpx.JSONError(c, fiber.StatusBadRequest, "invalid request body")
+	}
+
+	user, err := h.service.UpdateProfile(c.Context(), userID, req)
+	if err != nil {
+		return writeAuthError(c, err)
+	}
+
+	return httpx.JSONSuccess(c, http.StatusOK, "profile updated successfully", fiber.Map{"user": user})
+}
+
+func (h *AuthHandler) ChangePassword(c fiber.Ctx) error {
+	userID, ok := userIDFromClaims(c)
+	if !ok {
+		return httpx.JSONError(c, fiber.StatusUnauthorized, "invalid auth claims")
+	}
+
+	var req auth.ChangePasswordRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return httpx.JSONError(c, fiber.StatusBadRequest, "invalid request body")
+	}
+
+	resp, err := h.service.ChangePassword(c.Context(), userID, req)
+	if err != nil {
+		return writeAuthError(c, err)
+	}
+
+	// All previous refresh tokens were revoked; re-issue cookies so this device
+	// stays authenticated.
+	if err := h.setAuthCookies(c, resp); err != nil {
+		return httpx.JSONError(c, fiber.StatusInternalServerError, "failed to set auth cookies")
+	}
+
+	return httpx.JSONSuccess(c, http.StatusOK, "password changed successfully", authPayload(resp))
+}
+
+func userIDFromClaims(c fiber.Ctx) (string, bool) {
+	claims, ok := c.Locals("user").(jwt.MapClaims)
+	if !ok {
+		return "", false
+	}
+	userID := strings.TrimSpace(fmt.Sprint(claims["sub"]))
+	if userID == "" {
+		return "", false
+	}
+	return userID, true
+}
+
 func authPayload(resp auth.AuthResponse) fiber.Map {
 	return fiber.Map{
 		"user":       resp.User,
