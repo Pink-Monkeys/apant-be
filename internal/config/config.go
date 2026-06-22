@@ -18,9 +18,10 @@ type Config struct {
 	AnthropicKey             string
 	AnthropicModel           string
 	AllowedOrigins           []string
-	JWTSecret                string
-	AuthTokenTTLHours        int
-	AuthRefreshTokenTTLHours int
+	JWTSecret                   string
+	AuthAccessTokenTTLMinutes   int
+	AuthRefreshTokenTTLHours    int
+	AuthAbsoluteSessionTTLHours int
 	AuthStorage              string
 	ReportStorage            string
 	ScanStorage              string
@@ -64,8 +65,9 @@ func Load() Config {
 		AnthropicModel:           getEnv("ANTHROPIC_MODEL", "claude-sonnet-4-5"),
 		AllowedOrigins:           splitCSV(getEnv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")),
 		JWTSecret:                getEnv("JWT_SECRET", "change-me"),
-		AuthTokenTTLHours:        getEnvInt("AUTH_TOKEN_TTL_HOURS", 24),
-		AuthRefreshTokenTTLHours: getEnvInt("AUTH_REFRESH_TOKEN_TTL_HOURS", 168),
+		AuthAccessTokenTTLMinutes:   getEnvInt("AUTH_ACCESS_TOKEN_TTL_MINUTES", 15),
+		AuthRefreshTokenTTLHours:    getEnvInt("AUTH_REFRESH_TOKEN_TTL_HOURS", 168),
+		AuthAbsoluteSessionTTLHours: getEnvInt("AUTH_ABSOLUTE_SESSION_TTL_HOURS", 720),
 		AuthStorage:              strings.ToLower(strings.TrimSpace(getEnv("AUTH_STORAGE", storage))),
 		ReportStorage:            strings.ToLower(strings.TrimSpace(getEnv("REPORT_STORAGE", storage))),
 		ScanStorage:              strings.ToLower(strings.TrimSpace(getEnv("SCAN_STORAGE", storage))),

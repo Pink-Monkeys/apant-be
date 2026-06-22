@@ -31,6 +31,10 @@ type RefreshToken struct {
 	TokenHash string
 	ExpiresAt time.Time
 	RevokedAt *time.Time
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	// SessionStartedAt is the time the login session began. It is carried across
+	// token rotations so an absolute session lifetime can be enforced regardless
+	// of how often the token slides.
+	SessionStartedAt time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }

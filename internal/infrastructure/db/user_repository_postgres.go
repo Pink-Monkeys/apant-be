@@ -24,13 +24,14 @@ func (userModel) TableName() string {
 }
 
 type refreshTokenModel struct {
-	ID        string     `gorm:"column:id;type:text;primaryKey"`
-	UserID    string     `gorm:"column:user_id;type:text;index;not null"`
-	TokenHash string     `gorm:"column:token_hash;type:text;uniqueIndex;not null"`
-	ExpiresAt time.Time  `gorm:"column:expires_at;index;not null"`
-	RevokedAt *time.Time `gorm:"column:revoked_at;index"`
-	CreatedAt time.Time  `gorm:"column:created_at;not null"`
-	UpdatedAt time.Time  `gorm:"column:updated_at;not null"`
+	ID               string     `gorm:"column:id;type:text;primaryKey"`
+	UserID           string     `gorm:"column:user_id;type:text;index;not null"`
+	TokenHash        string     `gorm:"column:token_hash;type:text;uniqueIndex;not null"`
+	ExpiresAt        time.Time  `gorm:"column:expires_at;index;not null"`
+	RevokedAt        *time.Time `gorm:"column:revoked_at;index"`
+	SessionStartedAt *time.Time `gorm:"column:session_started_at"`
+	CreatedAt        time.Time  `gorm:"column:created_at;not null"`
+	UpdatedAt        time.Time  `gorm:"column:updated_at;not null"`
 }
 
 func (refreshTokenModel) TableName() string {
@@ -167,13 +168,14 @@ func (r *PostgresUserRepository) UpdatePassword(ctx context.Context, userID, pas
 
 func (r *PostgresUserRepository) CreateRefreshToken(ctx context.Context, token domain.RefreshToken) error {
 	model := refreshTokenModel{
-		ID:        token.ID,
-		UserID:    token.UserID,
-		TokenHash: token.TokenHash,
-		ExpiresAt: token.ExpiresAt,
-		RevokedAt: token.RevokedAt,
-		CreatedAt: token.CreatedAt,
-		UpdatedAt: token.UpdatedAt,
+		ID:               token.ID,
+		UserID:           token.UserID,
+		TokenHash:        token.TokenHash,
+		ExpiresAt:        token.ExpiresAt,
+		RevokedAt:        token.RevokedAt,
+		SessionStartedAt: timePtr(token.SessionStartedAt),
+		CreatedAt:        token.CreatedAt,
+		UpdatedAt:        token.UpdatedAt,
 	}
 
 	return r.db.DB.WithContext(ctx).Create(&model).Error
@@ -237,7 +239,7 @@ func toDomainUser(model userModel) domain.User {
 }
 
 func toDomainRefreshToken(model refreshTokenModel) domain.RefreshToken {
-	return domain.RefreshToken{
+	token := domain.RefreshToken{
 		ID:        model.ID,
 		UserID:    model.UserID,
 		TokenHash: model.TokenHash,
@@ -246,4 +248,17 @@ func toDomainRefreshToken(model refreshTokenModel) domain.RefreshToken {
 		CreatedAt: model.CreatedAt,
 		UpdatedAt: model.UpdatedAt,
 	}
+	if model.SessionStartedAt != nil {
+		token.SessionStartedAt = *model.SessionStartedAt
+	}
+	return token
+}
+
+// timePtr returns nil for a zero time so it persists as NULL, otherwise a pointer
+// to the value.
+func timePtr(t time.Time) *time.Time {
+	if t.IsZero() {
+		return nil
+	}
+	return &t
 }
