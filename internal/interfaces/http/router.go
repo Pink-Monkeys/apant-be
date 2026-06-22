@@ -34,6 +34,9 @@ func RegisterRouter(
 		HeaderName: "X-CSRF-Token",
 	}))
 	protected.Post("/auth/logout", auth.Logout)
+	protected.Get("/auth/me", auth.Me)
+	protected.Patch("/auth/profile", auth.UpdateProfile)
+	protected.Post("/auth/change-password", auth.ChangePassword)
 	protected.Post("/chat", scan.Chat)
 	protected.Post("/agent/chat", scan.AgentChat)
 	protected.Post("/agent/execute", scan.AgentExecute)

@@ -123,6 +123,48 @@ func (r *PostgresUserRepository) FindByID(ctx context.Context, id string) (domai
 	return toDomainUser(model), true, nil
 }
 
+func (r *PostgresUserRepository) UpdateProfile(ctx context.Context, userID, username, email string) error {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return fmt.Errorf("user id is required")
+	}
+
+	now := time.Now()
+	updates := map[string]any{
+		"username":   strings.ToLower(strings.TrimSpace(username)),
+		"email":      strings.ToLower(strings.TrimSpace(email)),
+		"updated_at": now,
+	}
+
+	if err := r.db.DB.WithContext(ctx).
+		Model(&userModel{}).
+		Where("id = ?", userID).
+		Updates(updates).Error; err != nil {
+		if isUniqueViolation(err, "idx_users_email") {
+			return domain.ErrEmailConflict
+		}
+		if isUniqueViolation(err, "idx_users_username") {
+			return domain.ErrUsernameConflict
+		}
+		return err
+	}
+	return nil
+}
+
+func (r *PostgresUserRepository) UpdatePassword(ctx context.Context, userID, passwordHash string) error {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return fmt.Errorf("user id is required")
+	}
+
+	now := time.Now()
+	return r.db.DB.WithContext(ctx).
+		Model(&userModel{}).
+		Where("id = ?", userID).
+		Updates(map[string]any{"password_hash": passwordHash, "updated_at": now}).
+		Error
+}
+
 func (r *PostgresUserRepository) CreateRefreshToken(ctx context.Context, token domain.RefreshToken) error {
 	model := refreshTokenModel{
 		ID:        token.ID,

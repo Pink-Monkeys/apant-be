@@ -8,6 +8,8 @@ type UserRepository interface {
 	FindByUsername(ctx context.Context, username string) (User, bool, error)
 	FindByEmail(ctx context.Context, email string) (User, bool, error)
 	FindByID(ctx context.Context, id string) (User, bool, error)
+	UpdateProfile(ctx context.Context, userID, username, email string) error
+	UpdatePassword(ctx context.Context, userID, passwordHash string) error
 	CreateRefreshToken(ctx context.Context, token RefreshToken) error
 	FindRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, bool, error)
 	RevokeRefreshToken(ctx context.Context, tokenID string) error

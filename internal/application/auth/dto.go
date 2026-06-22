@@ -20,6 +20,16 @@ type LogoutRequest struct {
 	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
+type UpdateProfileRequest struct {
+	Username string `json:"username"`
+	Email    string `json:"email"`
+}
+
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
 type AuthUser struct {
 	ID       string `json:"id"`
 	Username string `json:"username"`
