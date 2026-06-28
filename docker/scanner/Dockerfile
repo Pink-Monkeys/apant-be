@@ -88,7 +88,8 @@ COPY --from=builder /out/tools/ /usr/local/bin/
 
 # Wrapper nuclei to force HOME and write templates config each run.
 COPY docker/scanner/nuclei-wrapper.sh /usr/local/bin/nuclei-wrapper
-RUN chmod +x /usr/local/bin/nuclei-wrapper \
+RUN sed -i 's/\r$//' /usr/local/bin/nuclei-wrapper \
+    && chmod +x /usr/local/bin/nuclei-wrapper \
     && mv /usr/local/bin/nuclei /usr/local/bin/nuclei-real \
     && mv /usr/local/bin/nuclei-wrapper /usr/local/bin/nuclei
 
