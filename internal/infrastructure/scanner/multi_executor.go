@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os/exec"
 	"sort"
 	"strings"
@@ -205,9 +206,10 @@ func (e *MultiExecutor) executeHTTPRequest(intent *domain.ToolIntent) map[string
 		method = strings.ToUpper(strings.TrimSpace(m))
 	}
 
+	bodyStr, _ := intent.Params["body"].(string)
 	var bodyReader io.Reader
-	if body, ok := intent.Params["body"].(string); ok && body != "" {
-		bodyReader = strings.NewReader(body)
+	if bodyStr != "" {
+		bodyReader = strings.NewReader(bodyStr)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
@@ -281,7 +283,7 @@ func (e *MultiExecutor) executeHTTPRequest(intent *domain.ToolIntent) map[string
 
 	if location := resp.Header.Get("Location"); location != "" {
 		respHeaders["Location"] = location
-		if strings.Contains(strings.ToLower(location), "/my-account") {
+		if isLikelyAuthBypassRedirect(method, bodyStr, target, resp.StatusCode, location) {
 			exploitSuccess = true
 		}
 	}
@@ -303,6 +305,61 @@ func (e *MultiExecutor) executeHTTPRequest(intent *domain.ToolIntent) map[string
 		"body_length":      len(respBodyStr),
 		"exploit_success":  exploitSuccess,
 	}
+}
+
+// isLikelyAuthBypassRedirect flags a redirect that most likely indicates a
+// successful authentication bypass. The legacy PortSwigger "/my-account" signal
+// is kept as a known-lab marker. Beyond that, a generalized signal fires when a
+// form submission (POST) carrying a SQL-injection payload — instead of bouncing
+// back to the login/error page — redirects elsewhere, which is the classic shape
+// of a login bypass on a non-lab target.
+func isLikelyAuthBypassRedirect(method, body, target string, status int, location string) bool {
+	loc := strings.ToLower(strings.TrimSpace(location))
+	if loc == "" {
+		return false
+	}
+	if strings.Contains(loc, "/my-account") {
+		return true
+	}
+	if status < 300 || status >= 400 {
+		return false
+	}
+	if !strings.EqualFold(strings.TrimSpace(method), "POST") {
+		return false
+	}
+	if !looksLikeSQLiPayload(body) && !looksLikeSQLiPayload(target) {
+		return false
+	}
+	// A redirect back to an auth/error page means the bypass failed.
+	for _, deny := range []string{"login", "signin", "sign-in", "logout", "auth", "error", "invalid", "denied", "failed"} {
+		if strings.Contains(loc, deny) {
+			return false
+		}
+	}
+	return true
+}
+
+// looksLikeSQLiPayload reports whether s contains a recognizable SQL-injection
+// authentication-bypass pattern, decoding URL/form encoding first so payloads
+// carried in a POST body (e.g. %27+OR+%271%27%3D%271) are matched.
+func looksLikeSQLiPayload(s string) bool {
+	if strings.TrimSpace(s) == "" {
+		return false
+	}
+	lower := strings.ToLower(s)
+	if dec, err := url.QueryUnescape(lower); err == nil {
+		lower = dec
+	}
+	lower = strings.ReplaceAll(lower, "+", " ")
+	for _, p := range []string{
+		"' or '1'='1", "' or 1=1", "or '1'='1", "or 1=1", "' or ''='",
+		"\" or \"1\"=\"1", "') or ('1'='1", "'--", "'#", "'or'1'='1", "union select",
+	} {
+		if strings.Contains(lower, p) {
+			return true
+		}
+	}
+	return false
 }
 
 func parseLines(output string) []string {
