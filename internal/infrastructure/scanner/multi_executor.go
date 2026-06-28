@@ -535,21 +535,37 @@ func (e *MultiExecutor) buildNucleiArgs(intent *domain.ToolIntent) ([]string, er
 		return nil, fmt.Errorf("nuclei_scan requires target")
 	}
 
-	templatesPath := e.nucleiTemplates + "/http/"
+	// -jsonl gives structured, reliably parseable findings (the colored text format
+	// is brittle to parse and varies); the report layer turns each into a finding.
+	// -omit-raw drops the full request/response pairs from each JSON record — without
+	// it nuclei embeds the entire page HTML per finding, bloating the stored step and
+	// the agent's context for no benefit (we only need id/severity/matched-at).
+	args := []string{"-u", target, "-silent", "-jsonl", "-omit-raw"}
 
-	if tp, ok := intent.Params["templates"].(string); ok && tp != "" {
+	if tp, ok := intent.Params["templates"].(string); ok && strings.TrimSpace(tp) != "" {
+		// Honor an explicit, in-bounds template path from the agent.
 		tp = strings.TrimSpace(tp)
 		if strings.HasPrefix(tp, e.nucleiTemplates) {
-			templatesPath = tp
+			args = append(args, "-t", tp)
+		}
+	} else {
+		// Curated high-signal categories instead of the whole http/ tree. Scanning the
+		// entire tree (~13k templates) is unreliable in this environment and empirically
+		// returns ZERO results; these focused categories reliably surface real findings
+		// (exposed .env/.git, missing headers, default logins, open redirect, etc.) while
+		// staying fast. The massive cves/ tree and noisy technologies/ detections are
+		// intentionally excluded.
+		for _, cat := range []string{
+			"exposures", "misconfiguration", "vulnerabilities", "miscellaneous",
+			"default-logins", "exposed-panels", "takeovers",
+		} {
+			args = append(args, "-t", e.nucleiTemplates+"/http/"+cat+"/")
 		}
 	}
 
-	args := []string{"-u", target, "-t", templatesPath, "-silent"}
-
-	if severity, ok := intent.Params["severity"].(string); ok && severity != "" {
-		severity = strings.ReplaceAll(strings.TrimSpace(severity), "/", ",")
-		args = append(args, "-severity", severity)
-	}
+	// Deliberately NO -severity filter: low/info templates surface missing security
+	// headers, open redirects, and exposures that critical,high,medium would drop. The
+	// curated set keeps this fast even without a severity cap.
 
 	args = appendAuthAsHeaders(args, "-H", intent.Params)
 
