@@ -55,12 +55,12 @@ RUN apt-get update && \
     git \
     && setcap cap_net_raw,cap_net_admin+eip /usr/bin/nmap \
     && python3 -m venv /opt/mitmproxy-venv \
-    && /opt/mitmproxy-venv/bin/pip install --no-cache-dir mitmproxy \
+    && /opt/mitmproxy-venv/bin/pip install --no-cache-dir --retries 10 --timeout 300 mitmproxy \
     && ln -s /opt/mitmproxy-venv/bin/mitmproxy /usr/local/bin/mitmproxy \
     && ln -s /opt/mitmproxy-venv/bin/mitmdump /usr/local/bin/mitmdump \
     && ln -s /opt/mitmproxy-venv/bin/mitmweb /usr/local/bin/mitmweb \
     && python3 -m venv /opt/semgrep-venv \
-    && /opt/semgrep-venv/bin/pip install --no-cache-dir semgrep \
+    && /opt/semgrep-venv/bin/pip install --no-cache-dir --retries 10 --timeout 300 semgrep \
     && ln -s /opt/semgrep-venv/bin/semgrep /usr/local/bin/semgrep \
     && git clone --depth 1 https://github.com/semgrep/semgrep-rules.git /opt/semgrep-rules \
     && rm -rf /opt/semgrep-rules/.git \
@@ -86,6 +86,9 @@ RUN apt-get update && \
 COPY --from=builder /out/apant-scanner /app/apant-scanner
 COPY --from=builder /out/tools/ /usr/local/bin/
 
+# Curated APANT SAST rules (PHP/JS) layered on top of the OSS semgrep rules.
+COPY docker/scanner/apant-semgrep-rules/ /opt/apant-rules/
+
 # Wrapper nuclei to force HOME and write templates config each run.
 COPY docker/scanner/nuclei-wrapper.sh /usr/local/bin/nuclei-wrapper
 RUN sed -i 's/\r$//' /usr/local/bin/nuclei-wrapper \
@@ -101,7 +104,10 @@ ENV SCANNER_PORT=8081
 ENV NMAP_BINARY=nmap
 ENV NUCLEI_TEMPLATES_PATH=/home/scanner/.nuclei-templates
 ENV HOME=/home/scanner
-ENV SEMGREP_CONFIG=/opt/semgrep-rules
+# Point at the curated APANT pack plus the OSS rules' per-language subdirs. The
+# OSS repo ROOT must not be used as a config: it contains non-rule yaml (e.g.
+# .pre-commit-config.yaml) that makes semgrep abort the whole run.
+ENV SEMGREP_CONFIG="/opt/apant-rules /opt/semgrep-rules/php /opt/semgrep-rules/javascript /opt/semgrep-rules/generic"
 ENV SCANNER_WORKSPACE_DIR=/workspace
 EXPOSE 8081
 

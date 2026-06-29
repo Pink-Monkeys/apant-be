@@ -80,7 +80,11 @@ type ReportVuln struct {
 	PoC            ReportPoC      `json:"poc"`
 	Recommendation string         `json:"recommendation"`
 	Verified       bool           `json:"verified"`
-	CVSSScore      float64        `json:"cvss_score,omitempty"`
+	// CVSSScore is a representative CVSS v3.1 base score for the finding's class
+	// (the qualitative band it maps to). CWE is the matching Common Weakness
+	// Enumeration id. Both are assigned deterministically per vulnerability class.
+	CVSSScore float64 `json:"cvss_score,omitempty"`
+	CWE       string  `json:"cwe,omitempty"`
 
 	// CodeLocation is populated for static (SAST) findings: the precise file and
 	// line span in the analyzed source tree. Empty for dynamic (DAST) findings.
