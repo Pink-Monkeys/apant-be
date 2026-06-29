@@ -1,0 +1,217 @@
+# APANT curated SAST rules.
+#
+# High-signal, offline, heuristic rules for the languages APANT targets (PHP and
+# JS/Node). They run via `language: generic` + `pattern-regex` so they need no
+# network and no pro engine. They are intentionally pattern-based (not full taint
+# analysis): the goal is DETERMINISTIC recall of the common web vulnerability
+# classes so a finding does not depend on the agent choosing to report it. The
+# agentic triage step still confirms reachability and prunes false positives.
+#
+# severity maps to the report as: ERROR -> high, WARNING -> medium, INFO -> low.
+
+rules:
+  # ----------------------------- PHP ------------------------------------------
+  - id: apant-php-sql-injection
+    languages: [generic]
+    severity: ERROR
+    message: >-
+      Possible SQL injection: a database query is built with a PHP variable
+      (string interpolation/concatenation) instead of a parameterized query.
+      Confirm whether user input reaches this query and use prepared statements.
+    paths:
+      include: ["*.php"]
+    metadata:
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 - Injection"
+      confidence: MEDIUM
+    pattern-regex: '(?i)(->query|->exec|->prepare|mysqli_query|mysql_query|pg_query)\s*\(\s*[^)]*\$'
+
+  # The primary XSS detector is the taint rule below (handles echo/render,
+  # variable indirection and escaping). This narrow companion catches the PHP
+  # short-echo template idiom (`<?= $_GET[...] ?>`) that the taint sinks miss. It
+  # only matches a RAW superglobal directly after `<?=`, so escaped short echoes
+  # like `<?= e($_GET[...]) ?>` do not trip it (low false-positive risk).
+  - id: apant-php-xss-short-echo
+    languages: [generic]
+    severity: WARNING
+    message: >-
+      Possible Cross-Site Scripting: a request superglobal is echoed directly via
+      the PHP short-echo tag without escaping. Wrap it in htmlspecialchars()/e().
+    paths:
+      include: ["*.php"]
+    metadata:
+      cwe: "CWE-79: Cross-Site Scripting"
+      owasp: "A03:2021 - Injection"
+      confidence: MEDIUM
+    pattern-regex: '<\?=\s*\$_(GET|POST|REQUEST|COOKIE)'
+
+  - id: apant-php-xss-taint
+    languages: [php]
+    mode: taint
+    severity: WARNING
+    message: >-
+      Reflected/Stored XSS: user input from a superglobal flows into HTML output
+      (echo or a render function) without contextual escaping. This taint rule
+      follows the value across assignments and string concatenation, so it catches
+      the common "build an HTML string, then render it" pattern that line-based
+      rules miss. Encode with htmlspecialchars()/htmlentities() before output.
+    metadata:
+      cwe: "CWE-79: Cross-Site Scripting"
+      owasp: "A03:2021 - Injection"
+      confidence: MEDIUM
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+      - pattern: $_COOKIE
+    pattern-sinks:
+      - pattern: echo ...;
+      - pattern: printf(...)
+      - pattern: print_r(...)
+      - pattern: vprintf(...)
+      - pattern: layout(...)
+      - pattern: render(...)
+      - pattern: view(...)
+      - pattern: display(...)
+      - pattern: template(...)
+    pattern-sanitizers:
+      - pattern: htmlspecialchars(...)
+      - pattern: htmlentities(...)
+      - pattern: e(...)
+      - pattern: strip_tags(...)
+      - pattern: urlencode(...)
+      - pattern: rawurlencode(...)
+      - pattern: intval(...)
+      - pattern: floatval(...)
+
+  - id: apant-php-open-redirect
+    languages: [generic]
+    severity: WARNING
+    message: >-
+      Possible Open Redirect: a Location header is built from a variable without
+      validation. Restrict redirects to an allowlist of internal paths/domains.
+    paths:
+      include: ["*.php"]
+    metadata:
+      cwe: "CWE-601: Open Redirect"
+      owasp: "A01:2021 - Broken Access Control"
+      confidence: MEDIUM
+    pattern-regex: '(?i)header\s*\(\s*[^)]{0,40}Location[^)]{0,80}\$'
+
+  - id: apant-php-unrestricted-file-upload
+    languages: [generic]
+    severity: ERROR
+    message: >-
+      Possible Unrestricted File Upload: move_uploaded_file is used. Validate
+      extension, MIME type and content, rename server-side, store outside the web
+      root, and disable script execution in the upload directory.
+    paths:
+      include: ["*.php"]
+    metadata:
+      cwe: "CWE-434: Unrestricted Upload of File with Dangerous Type"
+      owasp: "A04:2021 - Insecure Design"
+      confidence: MEDIUM
+    pattern-regex: '(?i)move_uploaded_file\s*\('
+
+  - id: apant-php-command-injection
+    languages: [generic]
+    severity: ERROR
+    message: >-
+      Possible OS Command Injection: a shell-executing function receives a
+      variable. Avoid shell execution with user input; use escapeshellarg or
+      safe APIs.
+    paths:
+      include: ["*.php"]
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A03:2021 - Injection"
+      confidence: MEDIUM
+    pattern-regex: '(?i)\b(system|exec|shell_exec|passthru|popen|proc_open)\s*\([^)]*\$'
+
+  - id: apant-php-ssrf
+    languages: [generic]
+    severity: ERROR
+    message: >-
+      Possible Server-Side Request Forgery / file read: a fetch or file function
+      receives user-controlled input. Enforce an allowlist and block internal,
+      loopback and link-local addresses.
+    paths:
+      include: ["*.php"]
+    metadata:
+      cwe: "CWE-918: Server-Side Request Forgery"
+      owasp: "A10:2021 - Server-Side Request Forgery"
+      confidence: MEDIUM
+    pattern-regex: '(?i)(file_get_contents|fopen|curl_setopt|curl_exec|readfile)\s*\([^)]*\$_(GET|POST|REQUEST)'
+
+  - id: apant-php-insecure-deserialization
+    languages: [generic]
+    severity: ERROR
+    message: >-
+      Possible Insecure Deserialization: unserialize is called on user-controlled
+      input. Avoid unserialize on untrusted data; use json_decode or signed data.
+    paths:
+      include: ["*.php"]
+    metadata:
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A08:2021 - Software and Data Integrity Failures"
+      confidence: MEDIUM
+    pattern-regex: '(?i)unserialize\s*\([^)]*\$_(GET|POST|REQUEST|COOKIE)'
+
+  - id: apant-php-eval-with-variable
+    languages: [generic]
+    severity: ERROR
+    message: >-
+      Possible Code Injection: eval() is called with a variable. Never eval
+      user-influenced data; refactor to avoid dynamic code execution.
+    paths:
+      include: ["*.php"]
+    metadata:
+      cwe: "CWE-95: Eval Injection"
+      owasp: "A03:2021 - Injection"
+      confidence: MEDIUM
+    pattern-regex: '(?i)\beval\s*\([^)]*\$'
+
+  # --------------------------- JS / Node --------------------------------------
+  - id: apant-js-ssrf
+    languages: [generic]
+    severity: ERROR
+    message: >-
+      Possible Server-Side Request Forgery: an outbound request is built from
+      req.query/params/body without an allowlist. Validate the destination and
+      block internal/loopback/link-local addresses.
+    paths:
+      include: ["*.js", "*.ts", "*.mjs", "*.cjs"]
+    metadata:
+      cwe: "CWE-918: Server-Side Request Forgery"
+      owasp: "A10:2021 - Server-Side Request Forgery"
+      confidence: MEDIUM
+    pattern-regex: '(?i)\b(fetch|axios|got|request|http\.get|https\.get)\s*\(\s*[^)]*req\.(query|params|body)'
+
+  - id: apant-js-sql-injection
+    languages: [generic]
+    severity: ERROR
+    message: >-
+      Possible SQL injection: a query is built with a template literal containing
+      an interpolated expression. Use parameterized queries / bound parameters.
+    paths:
+      include: ["*.js", "*.ts", "*.mjs", "*.cjs"]
+    metadata:
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 - Injection"
+      confidence: MEDIUM
+    pattern-regex: '(?i)\.(query|execute|raw)\s*\(\s*\x60[^\x60]*\$\{'
+
+  - id: apant-js-command-injection
+    languages: [generic]
+    severity: ERROR
+    message: >-
+      Possible OS Command Injection: a child_process function receives
+      req.query/params/body. Avoid shell execution with user input; use safe APIs
+      with argument arrays.
+    paths:
+      include: ["*.js", "*.ts", "*.mjs", "*.cjs"]
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A03:2021 - Injection"
+      confidence: MEDIUM
+    pattern-regex: '(?i)\b(exec|execSync|spawn|spawnSync)\s*\([^)]*req\.(query|params|body)'
