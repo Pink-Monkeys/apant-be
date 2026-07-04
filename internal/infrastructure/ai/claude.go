@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -102,7 +101,7 @@ func (p *ClaudeProvider) Generate(ctx context.Context, in domain.AIGenerateInput
 	}
 
 	if resp.StatusCode >= 300 {
-		return domain.AIGenerateOutput{}, fmt.Errorf("claude error: %s", string(body))
+		return domain.AIGenerateOutput{}, domain.NewProviderError(resp.StatusCode, body)
 	}
 
 	var out claudeResponse

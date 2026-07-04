@@ -27,7 +27,8 @@ var probeClient = &http.Client{Timeout: 15 * time.Second}
 // and returns no model list (the admin enters models manually).
 func ProbeProvider(ctx context.Context, adapterType, apiKey, baseURL string) (ProbeResult, error) {
 	switch adapterType {
-	case domain.AdapterOpenAICompatible:
+	case domain.AdapterOpenAICompatible, domain.AdapterOpenAIChat:
+		// Both dialects expose the same GET /v1/models listing endpoint.
 		return probeOpenAI(ctx, apiKey, baseURL)
 	case domain.AdapterAnthropic:
 		return probeAnthropic(ctx, apiKey)

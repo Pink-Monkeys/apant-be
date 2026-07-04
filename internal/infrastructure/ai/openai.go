@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -121,7 +120,7 @@ func (p *OpenAIProvider) Generate(ctx context.Context, in domain.AIGenerateInput
 	}
 
 	if resp.StatusCode >= 300 {
-		return domain.AIGenerateOutput{}, fmt.Errorf("openai error: %s", string(body))
+		return domain.AIGenerateOutput{}, domain.NewProviderError(resp.StatusCode, body)
 	}
 
 	var out openAIResponse
