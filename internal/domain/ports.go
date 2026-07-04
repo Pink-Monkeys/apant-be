@@ -17,6 +17,11 @@ type AIGenerateOutput struct {
 // AIGateway abstracts provider-specific AI integration.
 type AIGateway interface {
 	Generate(ctx context.Context, provider string, in AIGenerateInput) (AIGenerateOutput, error)
+	// Validate reports whether a (provider, model) selection is usable before a
+	// scan does any expensive work: the provider must exist, be enabled, and have
+	// a key; a non-empty model must exist and be enabled for that provider. It
+	// returns a user-facing error (via shared/errors) when the selection is bad.
+	Validate(ctx context.Context, provider, model string) error
 }
 
 type ToolIntent struct {

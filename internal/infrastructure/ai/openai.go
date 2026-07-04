@@ -7,22 +7,39 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"apant_be/internal/domain"
 )
 
+// defaultOpenAIBaseURL is the OpenAI API root. OpenAI-compatible providers
+// (OpenRouter, Groq, local servers, …) override it via NewOpenAIProviderWithBaseURL.
+const defaultOpenAIBaseURL = "https://api.openai.com"
+
 type OpenAIProvider struct {
-	apiKey string
-	model  string
-	client *http.Client
+	apiKey  string
+	model   string
+	baseURL string
+	client  *http.Client
 }
 
 func NewOpenAIProvider(apiKey, model string) *OpenAIProvider {
+	return NewOpenAIProviderWithBaseURL(apiKey, model, "")
+}
+
+// NewOpenAIProviderWithBaseURL builds an OpenAI-compatible provider pointed at
+// baseURL (e.g. "https://openrouter.ai/api"). An empty baseURL uses OpenAI.
+func NewOpenAIProviderWithBaseURL(apiKey, model, baseURL string) *OpenAIProvider {
+	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	if baseURL == "" {
+		baseURL = defaultOpenAIBaseURL
+	}
 	return &OpenAIProvider{
-		apiKey: apiKey,
-		model:  model,
-		client: &http.Client{Timeout: 60 * time.Second},
+		apiKey:  apiKey,
+		model:   model,
+		baseURL: baseURL,
+		client:  &http.Client{Timeout: 60 * time.Second},
 	}
 }
 
@@ -84,7 +101,7 @@ func (p *OpenAIProvider) Generate(ctx context.Context, in domain.AIGenerateInput
 		return domain.AIGenerateOutput{}, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.openai.com/v1/responses", bytes.NewReader(b))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL+"/v1/responses", bytes.NewReader(b))
 	if err != nil {
 		return domain.AIGenerateOutput{}, err
 	}

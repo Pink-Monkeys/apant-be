@@ -26,3 +26,13 @@ func (g *Gateway) Generate(ctx context.Context, provider string, in domain.AIGen
 	}
 	return p.Generate(ctx, in)
 }
+
+// Validate checks only that the provider is one of the statically-wired
+// backends. This gateway has no model catalog (it is the no-DB fallback), so any
+// model is accepted.
+func (g *Gateway) Validate(_ context.Context, provider, _ string) error {
+	if _, ok := g.providers[provider]; !ok {
+		return fmt.Errorf("unsupported provider: %s", provider)
+	}
+	return nil
+}
