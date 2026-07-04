@@ -9,8 +9,15 @@ import (
 // Adapter types map a provider row to a concrete AI code adapter. A provider's
 // display name is free-form, but its behaviour is decided by AdapterType.
 const (
+	// AdapterOpenAICompatible targets OpenAI's Responses API (/v1/responses).
+	// Use it for OpenAI itself.
 	AdapterOpenAICompatible = "openai-compatible"
-	AdapterAnthropic        = "anthropic"
+	// AdapterOpenAIChat targets the widely-implemented Chat Completions API
+	// (/v1/chat/completions with a `messages` array). Use it for providers that
+	// expose an OpenAI-compatible chat endpoint but not the Responses API:
+	// DeepSeek, Gemini (OpenAI mode), OpenRouter, Groq, local servers, etc.
+	AdapterOpenAIChat = "openai-chat"
+	AdapterAnthropic  = "anthropic"
 )
 
 // ErrLLMProviderNotFound is returned when a provider id/name does not resolve.

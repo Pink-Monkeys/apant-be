@@ -42,7 +42,9 @@ func NewService(repo domain.LLMProviderRepository, cipher Cipher, prober Prober,
 }
 
 func validAdapter(t string) bool {
-	return t == domain.AdapterOpenAICompatible || t == domain.AdapterAnthropic
+	return t == domain.AdapterOpenAICompatible ||
+		t == domain.AdapterOpenAIChat ||
+		t == domain.AdapterAnthropic
 }
 
 // --- Admin: providers ---
@@ -77,7 +79,7 @@ func (s *Service) CreateProvider(ctx context.Context, req CreateProviderRequest)
 		return ProviderResponse{}, appErrors.New(http.StatusBadRequest, "name is required")
 	}
 	if !validAdapter(adapter) {
-		return ProviderResponse{}, appErrors.New(http.StatusBadRequest, "adapter_type must be openai-compatible or anthropic")
+		return ProviderResponse{}, appErrors.New(http.StatusBadRequest, "adapter_type must be one of: openai-compatible, openai-chat, anthropic")
 	}
 
 	enc, err := s.cipher.Encrypt(strings.TrimSpace(req.APIKey))
@@ -122,7 +124,7 @@ func (s *Service) UpdateProvider(ctx context.Context, id string, req UpdateProvi
 	if req.AdapterType != nil {
 		adapter := strings.TrimSpace(*req.AdapterType)
 		if !validAdapter(adapter) {
-			return ProviderResponse{}, appErrors.New(http.StatusBadRequest, "adapter_type must be openai-compatible or anthropic")
+			return ProviderResponse{}, appErrors.New(http.StatusBadRequest, "adapter_type must be one of: openai-compatible, openai-chat, anthropic")
 		}
 		existing.AdapterType = adapter
 	}

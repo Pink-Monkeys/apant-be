@@ -13,6 +13,8 @@ func BuildProvider(adapterType, apiKey, baseURL, model string) (Provider, error)
 	switch adapterType {
 	case domain.AdapterOpenAICompatible:
 		return NewOpenAIProviderWithBaseURL(apiKey, model, baseURL), nil
+	case domain.AdapterOpenAIChat:
+		return NewOpenAIChatProvider(apiKey, model, baseURL), nil
 	case domain.AdapterAnthropic:
 		return NewClaudeProvider(apiKey, model), nil
 	default:
