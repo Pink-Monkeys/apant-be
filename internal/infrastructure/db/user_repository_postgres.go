@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
+
 	"apant_be/internal/domain"
 )
 
@@ -164,6 +166,66 @@ func (r *PostgresUserRepository) UpdatePassword(ctx context.Context, userID, pas
 		Where("id = ?", userID).
 		Updates(map[string]any{"password_hash": passwordHash, "updated_at": now}).
 		Error
+}
+
+func (r *PostgresUserRepository) ListUsers(ctx context.Context) ([]domain.User, error) {
+	var models []userModel
+	if err := r.db.DB.WithContext(ctx).Order("created_at ASC").Find(&models).Error; err != nil {
+		return nil, err
+	}
+	out := make([]domain.User, 0, len(models))
+	for _, m := range models {
+		out = append(out, toDomainUser(m))
+	}
+	return out, nil
+}
+
+func (r *PostgresUserRepository) UpdateRole(ctx context.Context, userID, role string) error {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return fmt.Errorf("user id is required")
+	}
+	res := r.db.DB.WithContext(ctx).
+		Model(&userModel{}).
+		Where("id = ?", userID).
+		Updates(map[string]any{"role": role, "updated_at": time.Now()})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return fmt.Errorf("user not found")
+	}
+	return nil
+}
+
+func (r *PostgresUserRepository) DeleteUser(ctx context.Context, userID string) error {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return fmt.Errorf("user id is required")
+	}
+	// Remove the user and their refresh tokens together so no orphaned sessions
+	// remain.
+	return r.db.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("user_id = ?", userID).Delete(&refreshTokenModel{}).Error; err != nil {
+			return err
+		}
+		res := tx.Where("id = ?", userID).Delete(&userModel{})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return fmt.Errorf("user not found")
+		}
+		return nil
+	})
+}
+
+func (r *PostgresUserRepository) CountByRole(ctx context.Context, role string) (int64, error) {
+	var count int64
+	if err := r.db.DB.WithContext(ctx).Model(&userModel{}).Where("role = ?", role).Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 func (r *PostgresUserRepository) CreateRefreshToken(ctx context.Context, token domain.RefreshToken) error {

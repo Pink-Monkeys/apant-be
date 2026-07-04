@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -177,6 +178,84 @@ func (r *MemoryUserRepository) UpdatePassword(_ context.Context, userID, passwor
 		r.usersByEmail[email] = user
 	}
 	return nil
+}
+
+func (r *MemoryUserRepository) ListUsers(_ context.Context) ([]domain.User, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	out := make([]domain.User, 0, len(r.usersByID))
+	for _, u := range r.usersByID {
+		out = append(out, u)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.Before(out[j].CreatedAt) })
+	return out, nil
+}
+
+func (r *MemoryUserRepository) UpdateRole(_ context.Context, userID, role string) error {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return fmt.Errorf("user id is required")
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	user, ok := r.usersByID[userID]
+	if !ok {
+		return fmt.Errorf("user not found")
+	}
+	user.Role = role
+	user.UpdatedAt = time.Now()
+	r.usersByID[userID] = user
+	if uname := strings.ToLower(strings.TrimSpace(user.Username)); uname != "" {
+		r.usersByUsername[uname] = user
+	}
+	if email := strings.ToLower(strings.TrimSpace(user.Email)); email != "" {
+		r.usersByEmail[email] = user
+	}
+	return nil
+}
+
+func (r *MemoryUserRepository) DeleteUser(_ context.Context, userID string) error {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return fmt.Errorf("user id is required")
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	user, ok := r.usersByID[userID]
+	if !ok {
+		return fmt.Errorf("user not found")
+	}
+	delete(r.usersByID, userID)
+	delete(r.usersByUsername, strings.ToLower(strings.TrimSpace(user.Username)))
+	if email := strings.ToLower(strings.TrimSpace(user.Email)); email != "" {
+		delete(r.usersByEmail, email)
+	}
+	// Drop the user's refresh tokens too.
+	for id, token := range r.tokensByID {
+		if token.UserID == userID {
+			delete(r.tokensByID, id)
+			delete(r.tokensByHash, token.TokenHash)
+		}
+	}
+	return nil
+}
+
+func (r *MemoryUserRepository) CountByRole(_ context.Context, role string) (int64, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var count int64
+	for _, u := range r.usersByID {
+		if u.Role == role {
+			count++
+		}
+	}
+	return count, nil
 }
 
 func (r *MemoryUserRepository) CreateRefreshToken(_ context.Context, token domain.RefreshToken) error {
