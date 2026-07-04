@@ -17,6 +17,7 @@ type Config struct {
 	OpenAIModel              string
 	AnthropicKey             string
 	AnthropicModel           string
+	LLMEncryptionKey         string
 	AllowedOrigins           []string
 	JWTSecret                   string
 	AuthAccessTokenTTLMinutes   int
@@ -63,6 +64,7 @@ func Load() Config {
 		OpenAIModel:              getEnv("OPENAI_MODEL", "gpt-5.4"),
 		AnthropicKey:             os.Getenv("ANTHROPIC_API_KEY"),
 		AnthropicModel:           getEnv("ANTHROPIC_MODEL", "claude-sonnet-4-5"),
+		LLMEncryptionKey:         os.Getenv("LLM_ENCRYPTION_KEY"),
 		AllowedOrigins:           splitCSV(getEnv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")),
 		JWTSecret:                getEnv("JWT_SECRET", "change-me"),
 		AuthAccessTokenTTLMinutes:   getEnvInt("AUTH_ACCESS_TOKEN_TTL_MINUTES", 15),

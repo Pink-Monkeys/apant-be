@@ -9,14 +9,34 @@ import (
 
 const schemaMigrationsTable = "gorm_migrations"
 
-func ApplyMigrations(gormDB *gorm.DB) error {
+// SeedConfig carries values that data-seed migrations need from the environment.
+// It is empty for rollbacks and schema-only runs; seed migrations no-op when the
+// relevant fields are absent.
+type SeedConfig struct {
+	// EncryptKey encrypts a plaintext secret to ciphertext for storage. Nil
+	// disables the LLM provider seed (a missing/invalid LLM_ENCRYPTION_KEY).
+	EncryptKey func(plaintext string) ([]byte, error)
+
+	OpenAIAPIKey   string
+	OpenAIModel    string
+	AnthropicKey   string
+	AnthropicModel string
+
+	// Admin bootstrap. AdminPasswordHash is a pre-computed bcrypt hash so this
+	// package stays free of auth dependencies.
+	AdminUsername     string
+	AdminEmail        string
+	AdminPasswordHash string
+}
+
+func ApplyMigrations(gormDB *gorm.DB, seed SeedConfig) error {
 	if gormDB == nil {
 		return fmt.Errorf("gorm db is nil")
 	}
 
 	m := gormigrate.New(gormDB, &gormigrate.Options{
 		TableName: schemaMigrationsTable,
-	}, migrations())
+	}, migrations(seed))
 
 	return m.Migrate()
 }
@@ -28,7 +48,7 @@ func RollbackLastMigration(gormDB *gorm.DB) error {
 
 	m := gormigrate.New(gormDB, &gormigrate.Options{
 		TableName: schemaMigrationsTable,
-	}, migrations())
+	}, migrations(SeedConfig{}))
 
 	return m.RollbackLast()
 }
@@ -40,12 +60,12 @@ func RollbackToMigration(gormDB *gorm.DB, migrationID string) error {
 
 	m := gormigrate.New(gormDB, &gormigrate.Options{
 		TableName: schemaMigrationsTable,
-	}, migrations())
+	}, migrations(SeedConfig{}))
 
 	return m.RollbackTo(migrationID)
 }
 
-func migrations() []*gormigrate.Migration {
+func migrations(seed SeedConfig) []*gormigrate.Migration {
 	return []*gormigrate.Migration{
 		{
 			ID: "20260429_create_auth_tables",
@@ -224,6 +244,31 @@ func migrations() []*gormigrate.Migration {
 				}
 				return nil
 			},
+		},
+		{
+			ID: "20260704_create_llm_tables",
+			Migrate: func(tx *gorm.DB) error {
+				return migrateLLM(tx)
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable(&llmModelModel{}, &llmProviderModel{})
+			},
+		},
+		{
+			ID: "20260704_seed_llm_from_env",
+			Migrate: func(tx *gorm.DB) error {
+				return seedLLMFromEnv(tx, seed)
+			},
+			// Data seed: nothing to roll back structurally. Leaving seeded rows in
+			// place is safe and avoids clobbering admin-edited providers.
+			Rollback: func(tx *gorm.DB) error { return nil },
+		},
+		{
+			ID: "20260704_seed_admin_user",
+			Migrate: func(tx *gorm.DB) error {
+				return seedAdminUser(tx, seed)
+			},
+			Rollback: func(tx *gorm.DB) error { return nil },
 		},
 	}
 }

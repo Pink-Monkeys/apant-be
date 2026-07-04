@@ -5,7 +5,12 @@ import (
 	"time"
 )
 
-const RolePentester = "pentester"
+const (
+	RolePentester = "pentester"
+	// RoleAdmin can manage LLM providers/models (CRUD) in addition to running
+	// scans. Pentesters may only select an existing provider/model.
+	RoleAdmin = "admin"
+)
 
 // ErrEmailConflict is returned when a user with the same email already exists.
 var ErrEmailConflict = errors.New("email already in use")
