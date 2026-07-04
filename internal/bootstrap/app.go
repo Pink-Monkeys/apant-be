@@ -14,6 +14,7 @@ import (
 	"apant_be/internal/application/auth"
 	"apant_be/internal/application/llm"
 	"apant_be/internal/application/pentest"
+	"apant_be/internal/application/user"
 	"apant_be/internal/config"
 	"apant_be/internal/domain"
 	"apant_be/internal/infrastructure/ai"
@@ -132,7 +133,10 @@ func BuildApp(cfg config.Config) (*fiber.App, string, error) {
 	sessionHandler := handler.NewSessionHandler(pentestService)
 	reportHandler := handler.NewReportHandler(pentestService)
 
-	httpInterface.RegisterRouter(app, authHandler, scanHandler, sessionHandler, reportHandler, llmHandler, cfg.JWTSecret, cfg.AuthAccessCookieName, cfg.AuthCSRFCookieName)
+	userService := user.NewService(userRepo)
+	userHandler := handler.NewUserHandler(userService)
+
+	httpInterface.RegisterRouter(app, authHandler, scanHandler, sessionHandler, reportHandler, llmHandler, userHandler, cfg.JWTSecret, cfg.AuthAccessCookieName, cfg.AuthCSRFCookieName)
 
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	return app, addr, nil
