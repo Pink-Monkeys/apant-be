@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
@@ -111,6 +112,9 @@ func BuildApp(cfg config.Config) (*fiber.App, string, error) {
 		MaxFiles:      cfg.StaticMaxFiles,
 		MaxTotalBytes: cfg.StaticMaxTotalBytes,
 	})
+	// Recover scans left "running" by a previous crash/restart so users are not
+	// blocked by a phantom in-flight scan.
+	pentestService.RecoverStaleScans(context.Background())
 	authService := auth.NewService(
 		userRepo,
 		cfg.JWTSecret,

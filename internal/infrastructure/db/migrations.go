@@ -246,6 +246,18 @@ func migrations(seed SeedConfig) []*gormigrate.Migration {
 			},
 		},
 		{
+			ID: "20260704_add_error_to_scans",
+			Migrate: func(tx *gorm.DB) error {
+				if tx.Migrator().HasColumn(&scanModel{}, "error") {
+					return nil
+				}
+				return tx.Migrator().AddColumn(&scanModel{}, "Error")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropColumn(&scanModel{}, "error")
+			},
+		},
+		{
 			ID: "20260704_create_llm_tables",
 			Migrate: func(tx *gorm.DB) error {
 				return migrateLLM(tx)

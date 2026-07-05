@@ -65,3 +65,38 @@ func (r *MemoryScanRepository) FindByUserID(_ context.Context, userID string) ([
 
 	return out, nil
 }
+
+func (r *MemoryScanRepository) FindRunningByUserID(_ context.Context, userID string) (domain.Scan, bool, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var latest domain.Scan
+	found := false
+	for _, scan := range r.scans {
+		if scan.UserID != userID || scan.Status != domain.ScanStatusRunning {
+			continue
+		}
+		if !found || scan.CreatedAt.After(latest.CreatedAt) {
+			latest = scan
+			found = true
+		}
+	}
+	return latest, found, nil
+}
+
+func (r *MemoryScanRepository) FailStaleRunning(_ context.Context, olderThan time.Time, reason string) (int64, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var count int64
+	for id, scan := range r.scans {
+		if scan.Status == domain.ScanStatusRunning && scan.CreatedAt.Before(olderThan) {
+			scan.Status = domain.ScanStatusFailed
+			scan.Error = reason
+			scan.UpdatedAt = time.Now()
+			r.scans[id] = scan
+			count++
+		}
+	}
+	return count, nil
+}
