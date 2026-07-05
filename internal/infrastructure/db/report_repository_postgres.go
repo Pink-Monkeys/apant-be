@@ -17,6 +17,7 @@ type reportModel struct {
 	ScanID           string    `gorm:"column:scan_id;type:text;index"`
 	SessionID        string    `gorm:"column:session_id;type:text;index"`
 	UserID           string    `gorm:"column:user_id;type:text;index"`
+	Username         string    `gorm:"column:username;type:text"`
 	Title            string    `gorm:"column:title;type:text"`
 	OverallSeverity  string    `gorm:"column:overall_severity;type:text"`
 	ExecutiveSummary string    `gorm:"column:executive_summary;type:text"`
@@ -77,6 +78,7 @@ func (r *PostgresReportRepository) Save(ctx context.Context, report domain.Repor
 		ScanID:           strings.TrimSpace(report.ScanID),
 		SessionID:        strings.TrimSpace(report.SessionID),
 		UserID:           strings.TrimSpace(report.UserID),
+		Username:         strings.TrimSpace(report.Username),
 		Title:            report.Data.Title,
 		OverallSeverity:  string(report.Data.OverallSeverity),
 		ExecutiveSummary: report.Data.ExecutiveSummary,
@@ -184,6 +186,7 @@ func toDomainReport(model reportModel) (domain.Report, error) {
 		ScanID:    model.ScanID,
 		SessionID: model.SessionID,
 		UserID:    model.UserID,
+		Username:  model.Username,
 		CreatedAt: model.CreatedAt,
 		Data:      data,
 	}, nil

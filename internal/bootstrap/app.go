@@ -106,7 +106,7 @@ func BuildApp(cfg config.Config) (*fiber.App, string, error) {
 	}
 	llmHandler := handler.NewLLMHandler(llmService)
 
-	pentestService := pentest.NewService(aiGateway, executor, policy, registry, sessionRepo, scanRepo, reportRepo)
+	pentestService := pentest.NewService(aiGateway, executor, policy, registry, sessionRepo, scanRepo, reportRepo, userRepo)
 	pentestService.ConfigureStatic(pentest.StaticConfig{
 		WorkspaceDir:  cfg.WorkspaceDir,
 		MaxFiles:      cfg.StaticMaxFiles,

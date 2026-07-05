@@ -17,6 +17,7 @@ type scanModel struct {
 	ID          string    `gorm:"column:id;type:text;primaryKey"`
 	SessionID   string    `gorm:"column:session_id;type:text;index"`
 	UserID      string    `gorm:"column:user_id;type:text;index"`
+	Username    string    `gorm:"column:username;type:text"`
 	Target      string    `gorm:"column:target;type:text"`
 	Provider    string    `gorm:"column:provider;type:text"`
 	Model       string    `gorm:"column:model;type:text"`
@@ -71,6 +72,7 @@ func (r *ScanRepositoryPostgres) Save(ctx context.Context, scan domain.Scan) err
 		ID:          scan.ID,
 		SessionID:   strings.TrimSpace(scan.SessionID),
 		UserID:      strings.TrimSpace(scan.UserID),
+		Username:    strings.TrimSpace(scan.Username),
 		Target:      scan.Target,
 		Provider:    scan.Provider,
 		Model:       scan.Model,
@@ -158,6 +160,7 @@ func toDomainScan(model scanModel) (domain.Scan, error) {
 		ID:          model.ID,
 		SessionID:   model.SessionID,
 		UserID:      model.UserID,
+		Username:    model.Username,
 		Target:      model.Target,
 		Provider:    model.Provider,
 		Model:       model.Model,

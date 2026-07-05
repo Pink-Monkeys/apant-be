@@ -282,5 +282,29 @@ func migrations(seed SeedConfig) []*gormigrate.Migration {
 			},
 			Rollback: func(tx *gorm.DB) error { return nil },
 		},
+		{
+			ID: "20260705_add_username_to_reports",
+			Migrate: func(tx *gorm.DB) error {
+				if tx.Migrator().HasColumn(&reportModel{}, "username") {
+					return nil
+				}
+				return tx.Migrator().AddColumn(&reportModel{}, "Username")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropColumn(&reportModel{}, "username")
+			},
+		},
+		{
+			ID: "20260705_add_username_to_scans",
+			Migrate: func(tx *gorm.DB) error {
+				if tx.Migrator().HasColumn(&scanModel{}, "username") {
+					return nil
+				}
+				return tx.Migrator().AddColumn(&scanModel{}, "Username")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropColumn(&scanModel{}, "username")
+			},
+		},
 	}
 }

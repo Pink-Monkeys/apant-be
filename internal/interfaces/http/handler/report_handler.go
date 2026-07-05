@@ -36,6 +36,13 @@ func (h *ReportHandler) CreateReport(c fiber.Ctx) error {
 		return httpx.JSONError(c, http.StatusBadRequest, "invalid request body")
 	}
 
+	// Admins may generate a report from any user's scan; the report is still
+	// attributed to the scan's owner, not the admin. An empty userID skips the
+	// ownership check in the service layer.
+	if middleware.IsAdmin(c) {
+		userID = ""
+	}
+
 	report, err := h.service.CreateReportFromScan(c.Context(), req.ScanID, userID)
 	if err != nil {
 		return writeError(c, err)
@@ -48,6 +55,12 @@ func (h *ReportHandler) ListReports(c fiber.Ctx) error {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
 		return httpx.JSONError(c, http.StatusUnauthorized, "invalid auth claims")
+	}
+
+	// Admins see every user's reports; pentesters see only their own. An empty
+	// userID filter means "all" in the repository layer.
+	if middleware.IsAdmin(c) {
+		userID = ""
 	}
 
 	reports, err := h.service.ListReports(c.Context(), userID)
@@ -69,7 +82,8 @@ func (h *ReportHandler) GetReport(c fiber.Ctx) error {
 	if err != nil {
 		return httpx.JSONError(c, http.StatusNotFound, "report not found")
 	}
-	if report.UserID != "" && report.UserID != userID {
+	// Admins may view any report; pentesters only their own.
+	if !middleware.IsAdmin(c) && report.UserID != "" && report.UserID != userID {
 		return httpx.JSONError(c, http.StatusForbidden, "access denied")
 	}
 
@@ -87,7 +101,8 @@ func (h *ReportHandler) DeleteReport(c fiber.Ctx) error {
 	if err != nil {
 		return httpx.JSONError(c, http.StatusNotFound, "report not found")
 	}
-	if report.UserID != "" && report.UserID != userID {
+	// Admins may delete any report; pentesters only their own.
+	if !middleware.IsAdmin(c) && report.UserID != "" && report.UserID != userID {
 		return httpx.JSONError(c, http.StatusForbidden, "access denied")
 	}
 
