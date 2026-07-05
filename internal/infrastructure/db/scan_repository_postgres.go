@@ -26,6 +26,7 @@ type scanModel struct {
 	Status      string    `gorm:"column:status;type:text"`
 	Steps       []byte    `gorm:"column:steps;type:jsonb"`
 	FinalAnswer string    `gorm:"column:final_answer;type:text"`
+	Error       string    `gorm:"column:error;type:text"`
 	Duration    string    `gorm:"column:duration;type:text"`
 	TargetInfo  []byte    `gorm:"column:target_info;type:jsonb"`
 	CreatedAt   time.Time `gorm:"column:created_at;not null"`
@@ -79,6 +80,7 @@ func (r *ScanRepositoryPostgres) Save(ctx context.Context, scan domain.Scan) err
 		Status:      scan.Status,
 		Steps:       steps,
 		FinalAnswer: scan.FinalAnswer,
+		Error:       scan.Error,
 		Duration:    scan.Duration,
 		TargetInfo:  targetInfo,
 		CreatedAt:   scan.CreatedAt,
@@ -165,11 +167,49 @@ func toDomainScan(model scanModel) (domain.Scan, error) {
 		Status:      model.Status,
 		Steps:       steps,
 		FinalAnswer: model.FinalAnswer,
+		Error:       model.Error,
 		Duration:    model.Duration,
 		TargetInfo:  targetInfo,
 		CreatedAt:   model.CreatedAt,
 		UpdatedAt:   model.UpdatedAt,
 	}, nil
+}
+
+func (r *ScanRepositoryPostgres) FindRunningByUserID(ctx context.Context, userID string) (domain.Scan, bool, error) {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return domain.Scan{}, false, nil
+	}
+
+	var model scanModel
+	err := r.db.DB.WithContext(ctx).
+		Where("user_id = ? AND status = ?", userID, domain.ScanStatusRunning).
+		Order("created_at DESC").
+		First(&model).Error
+	if err != nil {
+		if isNotFound(err) {
+			return domain.Scan{}, false, nil
+		}
+		return domain.Scan{}, false, err
+	}
+
+	scan, err := toDomainScan(model)
+	if err != nil {
+		return domain.Scan{}, false, err
+	}
+	return scan, true, nil
+}
+
+func (r *ScanRepositoryPostgres) FailStaleRunning(ctx context.Context, olderThan time.Time, reason string) (int64, error) {
+	res := r.db.DB.WithContext(ctx).
+		Model(&scanModel{}).
+		Where("status = ? AND created_at < ?", domain.ScanStatusRunning, olderThan).
+		Updates(map[string]any{
+			"status":     domain.ScanStatusFailed,
+			"error":      reason,
+			"updated_at": time.Now(),
+		})
+	return res.RowsAffected, res.Error
 }
 
 func migrateScans(tx *gorm.DB) error {

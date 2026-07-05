@@ -22,15 +22,15 @@ type AuthHandler struct {
 }
 
 type AuthCookieConfig struct {
-	AccessName string
+	AccessName  string
 	RefreshName string
-	CSRFName   string
-	Domain     string
-	Path       string
-	SameSite   string
-	Secure     bool
-	AccessTTL  time.Duration
-	RefreshTTL time.Duration
+	CSRFName    string
+	Domain      string
+	Path        string
+	SameSite    string
+	Secure      bool
+	AccessTTL   time.Duration
+	RefreshTTL  time.Duration
 }
 
 func NewAuthHandler(service *auth.Service, cookieConfig AuthCookieConfig) *AuthHandler {

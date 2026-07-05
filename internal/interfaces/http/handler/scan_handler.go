@@ -92,6 +92,41 @@ func (h *ScanHandler) AgentLoop(c fiber.Ctx) error {
 	return httpx.JSONSuccess(c, http.StatusOK, "agent loop completed successfully", resp)
 }
 
+// AgentLoopAsync starts a scan in the background and returns immediately with a
+// scan id. The client polls GET /scans/:id for progress and the final result,
+// so the scan survives a page refresh, navigation, or logout.
+func (h *ScanHandler) AgentLoopAsync(c fiber.Ctx) error {
+	var req pentest.AgentChatRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return httpx.JSONError(c, http.StatusBadRequest, "invalid request body")
+	}
+
+	if userID, ok := middleware.GetUserID(c); ok {
+		req.UserID = userID
+	}
+
+	resp, err := h.service.StartAgentLoopAsync(c.Context(), req)
+	if err != nil {
+		return writeError(c, err)
+	}
+
+	return httpx.JSONSuccess(c, http.StatusAccepted, "scan started", resp)
+}
+
+// CancelScan cancels the caller's running scan.
+func (h *ScanHandler) CancelScan(c fiber.Ctx) error {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		return httpx.JSONError(c, http.StatusUnauthorized, "invalid auth claims")
+	}
+
+	if err := h.service.CancelScan(c.Context(), c.Params("id"), userID); err != nil {
+		return writeError(c, err)
+	}
+
+	return httpx.JSONSuccess(c, http.StatusOK, "scan cancelled", fiber.Map{})
+}
+
 // StaticScan accepts a multipart upload of source code (a .zip archive) and runs
 // a SAST analysis synchronously, returning the full result once complete —
 // mirroring the dynamic /agent/loop flow.
@@ -138,6 +173,53 @@ func (h *ScanHandler) StaticScan(c fiber.Ctx) error {
 	}
 
 	return httpx.JSONSuccess(c, http.StatusOK, "static scan completed", resp)
+}
+
+// StaticScanAsync accepts the same multipart upload as StaticScan but runs the
+// SAST pipeline in the background: it returns immediately with a scan id once the
+// archive is received, and the client polls GET /scans/:id for progress and the
+// result — so the scan survives a page refresh, navigation, or logout.
+func (h *ScanHandler) StaticScanAsync(c fiber.Ctx) error {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		return httpx.JSONError(c, http.StatusUnauthorized, "invalid auth claims")
+	}
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		return httpx.JSONError(c, http.StatusBadRequest, "a source archive must be uploaded in the 'file' field")
+	}
+
+	if !strings.HasSuffix(strings.ToLower(fileHeader.Filename), ".zip") {
+		return httpx.JSONError(c, http.StatusBadRequest, "only .zip archives are supported")
+	}
+
+	tmpPath := filepath.Join(os.TempDir(), "apant-upload-"+uuid.NewString()+".zip")
+	if err := c.SaveFile(fileHeader, tmpPath); err != nil {
+		return httpx.JSONError(c, http.StatusInternalServerError, "failed to store upload")
+	}
+
+	maxSteps := 0
+	if v := strings.TrimSpace(c.FormValue("max_steps")); v != "" {
+		maxSteps, _ = strconv.Atoi(v)
+	}
+
+	resp, err := h.service.StartStaticScanAsync(c.Context(), pentest.StaticScanRequest{
+		UserID:      userID,
+		SessionID:   strings.TrimSpace(c.FormValue("session_id")),
+		Provider:    c.FormValue("provider"),
+		Model:       c.FormValue("model"),
+		Description: c.FormValue("description"),
+		MaxSteps:    maxSteps,
+		SourceName:  fileHeader.Filename,
+		ZipPath:     tmpPath,
+	})
+	if err != nil {
+		// StartStaticScanAsync removes the temp file on its early-error paths.
+		return writeError(c, err)
+	}
+
+	return httpx.JSONSuccess(c, http.StatusAccepted, "static scan started", resp)
 }
 
 func (h *ScanHandler) ListScans(c fiber.Ctx) error {

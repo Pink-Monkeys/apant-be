@@ -2,6 +2,15 @@ package domain
 
 import "time"
 
+// Scan lifecycle statuses. A scan starts "running" (async) and ends in one of
+// the terminal states. The legacy synchronous path writes "completed" directly.
+const (
+	ScanStatusRunning   = "running"
+	ScanStatusCompleted = "completed"
+	ScanStatusFailed    = "failed"
+	ScanStatusCancelled = "cancelled"
+)
+
 // Scan is the core business entity for a pentest run. It persists the raw
 // execution trace (steps) so reports can be generated and regenerated from it.
 type Scan struct {
@@ -18,9 +27,12 @@ type Scan struct {
 	Status      string      `json:"status"`
 	Steps       []ScanStep  `json:"steps"`
 	FinalAnswer string      `json:"final_answer"`
-	Duration    string      `json:"duration"`
-	CreatedAt   time.Time   `json:"created_at"`
-	UpdatedAt   time.Time   `json:"updated_at"`
+	// Error holds a human-readable reason when Status is "failed" (e.g. a
+	// rate-limit message from the provider), for the FE to display.
+	Error     string    `json:"error,omitempty"`
+	Duration  string    `json:"duration"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // TargetInfo is a deterministic fingerprint of the scan target for the FE
