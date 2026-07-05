@@ -14,9 +14,13 @@ const (
 // Scan is the core business entity for a pentest run. It persists the raw
 // execution trace (steps) so reports can be generated and regenerated from it.
 type Scan struct {
-	ID          string      `json:"id"`
-	SessionID   string      `json:"session_id"`
-	UserID      string      `json:"user_id"`
+	ID        string `json:"id"`
+	SessionID string `json:"session_id"`
+	UserID    string `json:"user_id"`
+	// Username is a snapshot of the account that started the scan, captured when
+	// the scan is created. It stays correct even if the user is later renamed or
+	// deleted. Empty for scans created before this field existed.
+	Username    string      `json:"username,omitempty"`
 	Target      string      `json:"target"`
 	TargetInfo  *TargetInfo `json:"target_info,omitempty"`
 	Provider    string      `json:"provider"`

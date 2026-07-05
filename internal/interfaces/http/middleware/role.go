@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
 
+	"apant_be/internal/domain"
 	"apant_be/internal/shared/httpx"
 )
 
@@ -41,4 +42,12 @@ func GetUserRole(c fiber.Ctx) (string, bool) {
 		return "", false
 	}
 	return strings.TrimSpace(role), true
+}
+
+// IsAdmin reports whether the authenticated caller holds the admin role. Handlers
+// use it to widen a query from "own records" to "all records" without a separate
+// admin-only route.
+func IsAdmin(c fiber.Ctx) bool {
+	role, ok := GetUserRole(c)
+	return ok && strings.EqualFold(strings.TrimSpace(role), domain.RoleAdmin)
 }

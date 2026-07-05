@@ -42,10 +42,8 @@ func RegisterRouter(
 	protected.Post("/chat", scan.Chat)
 	protected.Post("/agent/chat", scan.AgentChat)
 	protected.Post("/agent/execute", scan.AgentExecute)
-	protected.Post("/agent/loop", scan.AgentLoop)
-	protected.Post("/agent/loop/async", scan.AgentLoopAsync)
+	protected.Post("/dynamic/scan", scan.DynamicScan)
 	protected.Post("/static/scan", scan.StaticScan)
-	protected.Post("/static/scan/async", scan.StaticScanAsync)
 	protected.Get("/tools", scan.Tools)
 	protected.Get("/scan-types", scan.ScanTypes)
 

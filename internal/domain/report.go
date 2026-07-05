@@ -13,10 +13,14 @@ const (
 )
 
 type Report struct {
-	ID        string     `json:"id"`
-	ScanID    string     `json:"scan_id"`
-	SessionID string     `json:"session_id"`
-	UserID    string     `json:"user_id"`
+	ID        string `json:"id"`
+	ScanID    string `json:"scan_id"`
+	SessionID string `json:"session_id"`
+	UserID    string `json:"user_id"`
+	// Username is a snapshot of the account that ran the scan, captured at report
+	// creation. It stays correct even if the user is later renamed or deleted.
+	// Empty for reports created before this field existed.
+	Username  string     `json:"username,omitempty"`
 	CreatedAt time.Time  `json:"created_at"`
 	Data      ReportData `json:"data"`
 }
