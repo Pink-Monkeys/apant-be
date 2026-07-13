@@ -13,6 +13,7 @@ func RegisterRouter(
 	scan *handler.ScanHandler,
 	session *handler.SessionHandler,
 	report *handler.ReportHandler,
+	dashboard *handler.DashboardHandler,
 	llm *handler.LLMHandler,
 	user *handler.UserHandler,
 	jwtSecret string,
@@ -56,6 +57,7 @@ func RegisterRouter(
 	protected.Post("/scans/:id/cancel", scan.CancelScan)
 
 	report.RegisterRoutes(protected)
+	dashboard.RegisterRoutes(protected)
 	llm.RegisterRoutes(protected)
 	user.RegisterRoutes(protected)
 }

@@ -136,11 +136,12 @@ func BuildApp(cfg config.Config) (*fiber.App, string, error) {
 	scanHandler := handler.NewScanHandler(pentestService)
 	sessionHandler := handler.NewSessionHandler(pentestService)
 	reportHandler := handler.NewReportHandler(pentestService)
+	dashboardHandler := handler.NewDashboardHandler(pentestService)
 
 	userService := user.NewService(userRepo)
 	userHandler := handler.NewUserHandler(userService)
 
-	httpInterface.RegisterRouter(app, authHandler, scanHandler, sessionHandler, reportHandler, llmHandler, userHandler, cfg.JWTSecret, cfg.AuthAccessCookieName, cfg.AuthCSRFCookieName)
+	httpInterface.RegisterRouter(app, authHandler, scanHandler, sessionHandler, reportHandler, dashboardHandler, llmHandler, userHandler, cfg.JWTSecret, cfg.AuthAccessCookieName, cfg.AuthCSRFCookieName)
 
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	return app, addr, nil

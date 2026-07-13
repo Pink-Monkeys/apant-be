@@ -137,6 +137,79 @@ func (r *PostgresReportRepository) FindByUserID(ctx context.Context, userID stri
 	return out, nil
 }
 
+// FindByUserIDFiltered applies filter.From/To against created_at, filter.Target
+// against the metadata.target jsonb field, and filter.Page/Limit as
+// LIMIT/OFFSET. Vulnerabilities are stored as a jsonb blob per report (not a
+// normalized table), so category/CVSS aggregation happens in the application
+// layer over the returned rows rather than in SQL.
+func (r *PostgresReportRepository) FindByUserIDFiltered(ctx context.Context, userID string, filter domain.ReportFilter) ([]domain.Report, int64, error) {
+	userID = strings.TrimSpace(userID)
+
+	base := r.db.DB.WithContext(ctx).Model(&reportModel{})
+	if userID != "" {
+		base = base.Where("user_id = ?", userID)
+	}
+	if !filter.From.IsZero() {
+		base = base.Where("created_at >= ?", filter.From)
+	}
+	if !filter.To.IsZero() {
+		base = base.Where("created_at <= ?", filter.To)
+	}
+	if target := strings.TrimSpace(filter.Target); target != "" {
+		base = base.Where("metadata->>'target' = ?", target)
+	}
+
+	var total int64
+	if err := base.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	query := base.Session(&gorm.Session{}).Order("created_at DESC")
+	if filter.Limit > 0 {
+		query = query.Limit(filter.Limit)
+		if filter.Page > 1 {
+			query = query.Offset((filter.Page - 1) * filter.Limit)
+		}
+	}
+
+	var models []reportModel
+	if err := query.Find(&models).Error; err != nil {
+		return nil, 0, err
+	}
+
+	out := make([]domain.Report, 0, len(models))
+	for _, model := range models {
+		report, err := toDomainReport(model)
+		if err != nil {
+			continue
+		}
+		out = append(out, report)
+	}
+
+	return out, total, nil
+}
+
+// DistinctTargets returns the distinct, non-empty metadata.target values across
+// the user's reports, sorted ascending.
+func (r *PostgresReportRepository) DistinctTargets(ctx context.Context, userID string) ([]string, error) {
+	userID = strings.TrimSpace(userID)
+
+	query := r.db.DB.WithContext(ctx).Model(&reportModel{}).
+		Distinct("metadata->>'target' AS target").
+		Where("metadata->>'target' IS NOT NULL AND metadata->>'target' != ''").
+		Order("target ASC")
+	if userID != "" {
+		query = query.Where("user_id = ?", userID)
+	}
+
+	var targets []string
+	if err := query.Pluck("target", &targets).Error; err != nil {
+		return nil, err
+	}
+
+	return targets, nil
+}
+
 func (r *PostgresReportRepository) DeleteByID(ctx context.Context, id string) error {
 	id = strings.TrimSpace(id)
 	if id == "" {
