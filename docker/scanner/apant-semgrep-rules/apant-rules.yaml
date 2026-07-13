@@ -96,7 +96,16 @@ rules:
       cwe: "CWE-601: Open Redirect"
       owasp: "A01:2021 - Broken Access Control"
       confidence: MEDIUM
-    pattern-regex: '(?i)header\s*\(\s*[^)]{0,40}Location[^)]{0,80}\$'
+    patterns:
+      - pattern-regex: '(?i)header\s*\(\s*[^)]{0,40}Location[^)]{0,80}\$'
+      # Exclude a hardcoded internal path: when a literal "/" (the start of a
+      # fixed absolute path) appears between "Location:" and the variable, the
+      # destination is fixed (e.g. 'Location: /post?id=' . $pid) and the variable
+      # is only a query/fragment value, not the redirect target — not an open
+      # redirect. A real open redirect ('Location: ' . $url) has no literal path
+      # before the variable and is still matched. [^$)] stops the scan at the
+      # variable or the header() close so a "/" later in the file can't suppress.
+      - pattern-not-regex: '(?i)Location\s*:\s*[^$)]{0,4}/[^$)]{0,80}\$'
 
   - id: apant-php-unrestricted-file-upload
     languages: [generic]
