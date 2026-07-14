@@ -32,13 +32,14 @@ type CacheInvalidator interface {
 
 type Service struct {
 	repo    domain.LLMProviderRepository
+	prefs   domain.UserLLMPreferenceRepository
 	cipher  Cipher
 	prober  Prober
 	gateway CacheInvalidator
 }
 
-func NewService(repo domain.LLMProviderRepository, cipher Cipher, prober Prober, gateway CacheInvalidator) *Service {
-	return &Service{repo: repo, cipher: cipher, prober: prober, gateway: gateway}
+func NewService(repo domain.LLMProviderRepository, prefs domain.UserLLMPreferenceRepository, cipher Cipher, prober Prober, gateway CacheInvalidator) *Service {
+	return &Service{repo: repo, prefs: prefs, cipher: cipher, prober: prober, gateway: gateway}
 }
 
 func validAdapter(t string) bool {
@@ -310,6 +311,98 @@ func (s *Service) Options(ctx context.Context) ([]OptionProvider, error) {
 		out = append(out, OptionProvider{Name: p.Name, AdapterType: p.AdapterType, Models: models})
 	}
 	return out, nil
+}
+
+// --- Per-user selection ---
+
+// GetSelection returns the user's provider+model choice, validated against the
+// current catalog. A stored choice whose model was since removed or disabled is
+// replaced with the first available option, so a user is never handed a dead
+// selection. Returns an empty selection (both fields "") only when no enabled
+// provider/model exists at all.
+func (s *Service) GetSelection(ctx context.Context, userID string) (SelectionResponse, error) {
+	if strings.TrimSpace(userID) == "" {
+		return SelectionResponse{}, appErrors.New(http.StatusUnauthorized, "user id is required")
+	}
+
+	options, err := s.Options(ctx)
+	if err != nil {
+		return SelectionResponse{}, err
+	}
+
+	if s.prefs != nil {
+		pref, found, err := s.prefs.Get(ctx, userID)
+		if err != nil {
+			return SelectionResponse{}, appErrors.Wrap(http.StatusInternalServerError, "failed to load selection", err)
+		}
+		if found && optionExists(options, pref.Provider, pref.Model) {
+			return SelectionResponse{Provider: pref.Provider, Model: pref.Model}, nil
+		}
+	}
+
+	if p, m, ok := firstOption(options); ok {
+		return SelectionResponse{Provider: p, Model: m}, nil
+	}
+	return SelectionResponse{}, nil
+}
+
+// SetSelection persists the user's provider+model choice after validating it
+// against the current catalog, so only a real, enabled provider/model can be
+// stored.
+func (s *Service) SetSelection(ctx context.Context, userID, provider, model string) (SelectionResponse, error) {
+	if strings.TrimSpace(userID) == "" {
+		return SelectionResponse{}, appErrors.New(http.StatusUnauthorized, "user id is required")
+	}
+	if s.prefs == nil {
+		return SelectionResponse{}, appErrors.New(http.StatusServiceUnavailable, "selection storage is not configured")
+	}
+
+	provider = strings.TrimSpace(provider)
+	model = strings.TrimSpace(model)
+	if provider == "" || model == "" {
+		return SelectionResponse{}, appErrors.New(http.StatusBadRequest, "provider and model are required")
+	}
+
+	options, err := s.Options(ctx)
+	if err != nil {
+		return SelectionResponse{}, err
+	}
+	if !optionExists(options, provider, model) {
+		return SelectionResponse{}, appErrors.New(http.StatusBadRequest, "selected provider/model is not available")
+	}
+
+	if err := s.prefs.Upsert(ctx, domain.UserLLMPreference{UserID: userID, Provider: provider, Model: model}); err != nil {
+		return SelectionResponse{}, appErrors.Wrap(http.StatusInternalServerError, "failed to save selection", err)
+	}
+
+	return SelectionResponse{Provider: provider, Model: model}, nil
+}
+
+// optionExists reports whether the catalog contains the given provider (by name,
+// case-insensitive) with the given model enabled.
+func optionExists(options []OptionProvider, provider, model string) bool {
+	for _, opt := range options {
+		if !strings.EqualFold(opt.Name, provider) {
+			continue
+		}
+		for _, m := range opt.Models {
+			if m == model {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// firstOption returns the first provider+model in the catalog, used as the
+// default when a user has no valid stored selection.
+func firstOption(options []OptionProvider) (provider, model string, ok bool) {
+	for _, opt := range options {
+		if len(opt.Models) > 0 {
+			return opt.Name, opt.Models[0], true
+		}
+	}
+	return "", "", false
 }
 
 // --- helpers ---

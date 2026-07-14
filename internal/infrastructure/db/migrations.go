@@ -306,5 +306,25 @@ func migrations(seed SeedConfig) []*gormigrate.Migration {
 				return tx.Migrator().DropColumn(&scanModel{}, "username")
 			},
 		},
+		{
+			ID: "20260714_create_user_llm_preferences",
+			Migrate: func(tx *gorm.DB) error {
+				if err := migrateUserLLMPreferences(tx); err != nil {
+					return err
+				}
+				// Cascade delete the preference when its user is removed. Added as a
+				// named FK so it can be dropped on rollback; guarded by existence so a
+				// re-run is a no-op.
+				if !tx.Migrator().HasConstraint(&userLLMPreferenceModel{}, "fk_user_llm_preferences_user") {
+					return tx.Exec(`ALTER TABLE user_llm_preferences
+						ADD CONSTRAINT fk_user_llm_preferences_user
+						FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE`).Error
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable(&userLLMPreferenceModel{})
+			},
+		},
 	}
 }

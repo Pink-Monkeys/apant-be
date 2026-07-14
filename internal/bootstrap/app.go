@@ -92,6 +92,10 @@ func BuildApp(cfg config.Config) (*fiber.App, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
+	llmPrefRepo, err := buildUserLLMPreferenceRepository(cfg, postgresDB)
+	if err != nil {
+		return nil, "", err
+	}
 
 	// The AI gateway resolves providers/models from the DB at request time,
 	// decrypting each provider's key on demand. It requires a cipher, which is
@@ -102,7 +106,7 @@ func BuildApp(cfg config.Config) (*fiber.App, string, error) {
 	// are only present in the DB-backed path (dbGateway != nil).
 	var llmService *llm.Service
 	if dbGateway != nil {
-		llmService = llm.NewService(llmRepo, llmCipher, ai.NewProbeAdapter(), dbGateway)
+		llmService = llm.NewService(llmRepo, llmPrefRepo, llmCipher, ai.NewProbeAdapter(), dbGateway)
 	}
 	llmHandler := handler.NewLLMHandler(llmService)
 
@@ -233,6 +237,20 @@ func buildLLMRepository(cfg config.Config, pg *db.Postgres) (domain.LLMProviderR
 
 	log.Printf("llm storage backend: memory")
 	return db.NewMemoryLLMRepository(), nil
+}
+
+func buildUserLLMPreferenceRepository(cfg config.Config, pg *db.Postgres) (domain.UserLLMPreferenceRepository, error) {
+	// Preferences live alongside the LLM catalog: postgres-backed whenever the LLM
+	// or auth store is postgres, memory otherwise.
+	if cfg.ScanStorage == "postgres" || cfg.AuthStorage == "postgres" {
+		repo, err := db.NewPostgresUserLLMPreferenceRepository(pg)
+		if err != nil {
+			return nil, fmt.Errorf("user llm preference repository (postgres): %w", err)
+		}
+		return repo, nil
+	}
+
+	return db.NewMemoryUserLLMPreferenceRepository(), nil
 }
 
 func buildReportRepository(cfg config.Config, pg *db.Postgres) (domain.ReportRepository, error) {
