@@ -35,6 +35,10 @@ func (h *LLMHandler) requireConfigured(c fiber.Ctx) error {
 // authenticated user (pentesters select but cannot manage).
 func (h *LLMHandler) RegisterRoutes(router fiber.Router) {
 	router.Get("/llm/options", h.requireConfigured, h.Options)
+	// Per-user model selection: any authenticated user manages their own choice,
+	// scoped to their JWT identity.
+	router.Get("/llm/selection", h.requireConfigured, h.GetSelection)
+	router.Put("/llm/selection", h.requireConfigured, h.SetSelection)
 
 	admin := middleware.RequireRole(domain.RoleAdmin)
 	guard := h.requireConfigured
@@ -55,6 +59,34 @@ func (h *LLMHandler) Options(c fiber.Ctx) error {
 		return writeError(c, err)
 	}
 	return httpx.JSONSuccess(c, http.StatusOK, "llm options retrieved", options)
+}
+
+func (h *LLMHandler) GetSelection(c fiber.Ctx) error {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		return httpx.JSONError(c, http.StatusUnauthorized, "invalid auth claims")
+	}
+	selection, err := h.service.GetSelection(c.Context(), userID)
+	if err != nil {
+		return writeError(c, err)
+	}
+	return httpx.JSONSuccess(c, http.StatusOK, "selection retrieved", selection)
+}
+
+func (h *LLMHandler) SetSelection(c fiber.Ctx) error {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		return httpx.JSONError(c, http.StatusUnauthorized, "invalid auth claims")
+	}
+	var req llm.SetSelectionRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return httpx.JSONError(c, http.StatusBadRequest, "invalid request body")
+	}
+	selection, err := h.service.SetSelection(c.Context(), userID, req.Provider, req.Model)
+	if err != nil {
+		return writeError(c, err)
+	}
+	return httpx.JSONSuccess(c, http.StatusOK, "selection saved", selection)
 }
 
 func (h *LLMHandler) ListProviders(c fiber.Ctx) error {

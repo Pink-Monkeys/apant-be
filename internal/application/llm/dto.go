@@ -28,6 +28,20 @@ type OptionProvider struct {
 	Models      []string `json:"models"`
 }
 
+// SelectionResponse is a user's resolved provider+model choice for scans. It is
+// always valid against the current catalog: a stored selection whose model was
+// since removed/disabled is replaced with the first available option.
+type SelectionResponse struct {
+	Provider string `json:"provider"`
+	Model    string `json:"model"`
+}
+
+// SetSelectionRequest sets the caller's provider+model preference.
+type SetSelectionRequest struct {
+	Provider string `json:"provider"`
+	Model    string `json:"model"`
+}
+
 type CreateProviderRequest struct {
 	Name        string `json:"name"`
 	AdapterType string `json:"adapter_type"`

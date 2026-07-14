@@ -53,6 +53,23 @@ type LLMModel struct {
 	UpdatedAt  time.Time
 }
 
+// UserLLMPreference is a user's chosen provider+model for scans. It is stored
+// per user (keyed by UserID) so each account keeps its own selection,
+// independent of other users and portable across devices.
+type UserLLMPreference struct {
+	UserID    string
+	Provider  string
+	Model     string
+	UpdatedAt time.Time
+}
+
+// UserLLMPreferenceRepository persists each user's LLM selection. There is at
+// most one preference row per user; Upsert creates or replaces it.
+type UserLLMPreferenceRepository interface {
+	Get(ctx context.Context, userID string) (UserLLMPreference, bool, error)
+	Upsert(ctx context.Context, pref UserLLMPreference) error
+}
+
 // LLMProviderRepository persists providers and their models. Model rows are
 // owned by their provider (cascade delete).
 type LLMProviderRepository interface {
