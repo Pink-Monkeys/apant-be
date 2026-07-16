@@ -1,0 +1,65 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="7. View Report List" id="rep">
+    <mxGraphModel dx="1000" dy="700" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1240" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="a" value="" style="ellipse;fillColor=#000000;strokeColor=#000000;html=1;" vertex="1" parent="1"><mxGeometry x="175" y="60" width="30" height="30" as="geometry"/></mxCell>
+        <mxCell id="b" value="Buka halaman Reports" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="85.0" y="110" width="210" height="54" as="geometry"/></mxCell>
+        <mxCell id="c" value="Set filter (range/tanggal/target,
+page/limit) — opsional" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="85.0" y="195" width="210" height="54" as="geometry"/></mxCell>
+        <mxCell id="s1" value="Autentikasi (JWT),
+validasi parameter filter" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="375.0" y="110" width="210" height="54" as="geometry"/></mxCell>
+        <mxCell id="s2" value="Parameter
+valid?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F9A825;fontSize=11;" vertex="1" parent="1"><mxGeometry x="410.0" y="205" width="140" height="78" as="geometry"/></mxCell>
+        <mxCell id="s3" value="Role admin?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F9A825;fontSize=11;" vertex="1" parent="1"><mxGeometry x="410.0" y="325" width="140" height="78" as="geometry"/></mxCell>
+        <mxCell id="s4" value="Query SEMUA report
++ filter &amp; pagination" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="375.0" y="445" width="210" height="44" as="geometry"/></mxCell>
+        <mxCell id="s5" value="Query report user
++ filter &amp; pagination" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="530.0" y="445" width="210" height="44" as="geometry"/></mxCell>
+        <mxCell id="err" value="Kembalikan
+400" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FDECEA;strokeColor=#C62828;fontSize=11;" vertex="1" parent="1"><mxGeometry x="560.0" y="215" width="150" height="54" as="geometry"/></mxCell>
+        <mxCell id="s6" value="Kembalikan daftar report" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="375.0" y="540" width="210" height="54" as="geometry"/></mxCell>
+        <mxCell id="d" value="Lihat daftar &amp; pilih report" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="85.0" y="540" width="210" height="44" as="geometry"/></mxCell>
+        <mxCell id="s7" value="GET /reports/:id — cek akses
+(admin / pemilik)" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="375.0" y="630" width="210" height="54" as="geometry"/></mxCell>
+        <mxCell id="s8" value="Boleh
+akses?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F9A825;fontSize=11;" vertex="1" parent="1"><mxGeometry x="410.0" y="725" width="140" height="78" as="geometry"/></mxCell>
+        <mxCell id="s9" value="Kembalikan
+403" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="530.0" y="730" width="210" height="54" as="geometry"/></mxCell>
+        <mxCell id="s10" value="Kembalikan detail report" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="375.0" y="840" width="210" height="54" as="geometry"/></mxCell>
+        <mxCell id="e" value="Lihat detail report" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="85.0" y="630" width="210" height="54" as="geometry"/></mxCell>
+        <mxCell id="f" value="(Opsional) unduh / ekspor PDF" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="85.0" y="720" width="210" height="54" as="geometry"/></mxCell>
+        <mxCell id="g" value="" style="ellipse;fillColor=none;strokeColor=#000000;strokeWidth=2;html=1;" vertex="1" parent="1"><mxGeometry x="174" y="810" width="32" height="32" as="geometry"/></mxCell>
+        <mxCell id="gi" value="" style="ellipse;fillColor=#000000;strokeColor=#000000;html=1;" vertex="1" parent="1"><mxGeometry x="182" y="818" width="16" height="16" as="geometry"/></mxCell>
+        <mxCell id="ke" value="Tampilkan pesan error" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="85.0" y="215" width="210" height="54" as="geometry"/></mxCell>
+        <mxCell id="le" value="" style="ellipse;fillColor=none;strokeColor=#000000;strokeWidth=2;html=1;" vertex="1" parent="1"><mxGeometry x="174" y="300" width="32" height="32" as="geometry"/></mxCell>
+        <mxCell id="lei" value="" style="ellipse;fillColor=#000000;strokeColor=#000000;html=1;" vertex="1" parent="1"><mxGeometry x="182" y="308" width="16" height="16" as="geometry"/></mxCell>
+        <mxCell id="rep_e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="a" target="b"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="rep_e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="b" target="c"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="rep_e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="c" target="s1"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="rep_e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="s1" target="s2"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="rep_e5" value="Ya" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="s2" target="s3"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="rep_e6" value="Tidak" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="s2" target="err"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="rep_e7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="err" target="ke"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="190" y="242"/></Array></mxGeometry></mxCell>
+        <mxCell id="rep_e8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="ke" target="le"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="rep_e9" value="Ya" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="s3" target="s4"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="rep_e10" value="Tidak" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="s3" target="s5"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="rep_e11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="s4" target="s6"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="rep_e12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="s5" target="s6"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="635" y="520"/></Array></mxGeometry></mxCell>
+        <mxCell id="rep_e13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="s6" target="d"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="190" y="562"/></Array></mxGeometry></mxCell>
+        <mxCell id="rep_e14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="d" target="s7"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="rep_e15" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="s7" target="s8"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="rep_e16" value="Ya" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="s8" target="s10"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="rep_e17" value="Tidak" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="s8" target="s9"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="rep_e18" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="s10" target="e"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="190" y="862"/></Array></mxGeometry></mxCell>
+        <mxCell id="rep_e19" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="e" target="f"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="rep_e20" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="f" target="g"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="rep_e21" value=" " style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="s9" target="e"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="635" y="810"/><mxPoint x="190" y="810"/></Array></mxGeometry></mxCell>
+        <mxCell id="rep_panel" value="&lt;b&gt;Deskripsi Activity Diagram: View Report List&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Aktor:&lt;/b&gt; User (Pentester) / Admin&lt;br&gt;&lt;b&gt;Tujuan:&lt;/b&gt; Menampilkan daftar laporan dengan filter &amp; paginasi, serta detail laporan.&lt;br&gt;&lt;br&gt;&lt;b&gt;Alur Utama:&lt;/b&gt;&lt;br&gt;1. User membuka halaman Reports dan (opsional) menyetel filter: range/tanggal/target, page/limit.&lt;br&gt;2. Sistem mengautentikasi dan memvalidasi parameter filter.&lt;br&gt;3. Bila admin, query seluruh report; bila pentester, hanya miliknya, dengan filter &amp; paginasi. Daftar dikembalikan.&lt;br&gt;4. User memilih satu report.&lt;br&gt;5. Sistem mengambil detail via GET /reports/:id dengan pengecekan akses (admin/pemilik).&lt;br&gt;6. User melihat detail report dan (opsional) mengunduh/ekspor PDF.&lt;br&gt;&lt;br&gt;&lt;b&gt;Alur Alternatif / Pengecualian:&lt;/b&gt;&lt;br&gt;- 2a. Parameter filter tidak valid: sistem mengembalikan error 400.&lt;br&gt;- 5a. Bukan admin/pemilik: sistem mengembalikan error 403.&lt;br&gt;" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fillColor=#FCFCFC;strokeColor=#90A4AE;fontSize=11;spacingLeft=10;spacingRight=10;spacingTop=8;" vertex="1" parent="1"><mxGeometry x="760" y="50" width="440" height="432" as="geometry"/></mxCell>
+        <mxCell id="L_rep" value="User (Pentester)" style="swimlane;html=1;startSize=30;horizontal=1;fontSize=13;fontStyle=1;rounded=0;swimlaneFillColor=#E3F2FD;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=2;verticalAlign=top;align=center;" vertex="1" parent="1"><mxGeometry x="40" y="40" width="300" height="840" as="geometry"/></mxCell>
+        <mxCell id="R_rep" value="Sistem (APANT Backend)" style="swimlane;html=1;startSize=30;horizontal=1;fontSize=13;fontStyle=1;rounded=0;swimlaneFillColor=#F1F8E9;fillColor=#F1F8E9;strokeColor=#2E7D32;strokeWidth=2;verticalAlign=top;align=center;" vertex="1" parent="1"><mxGeometry x="360" y="40" width="360" height="840" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
