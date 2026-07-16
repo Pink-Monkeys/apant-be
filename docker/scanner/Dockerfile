@@ -106,8 +106,11 @@ ENV NUCLEI_TEMPLATES_PATH=/home/scanner/.nuclei-templates
 ENV HOME=/home/scanner
 # Point at the curated APANT pack plus the OSS rules' per-language subdirs. The
 # OSS repo ROOT must not be used as a config: it contains non-rule yaml (e.g.
-# .pre-commit-config.yaml) that makes semgrep abort the whole run.
-ENV SEMGREP_CONFIG="/opt/apant-rules /opt/semgrep-rules/php /opt/semgrep-rules/javascript /opt/semgrep-rules/generic"
+# .pre-commit-config.yaml) that makes semgrep abort the whole run. Point at the
+# per-language subdirs only. python/java/go/ruby carry real taint-mode (data-flow
+# source→sink) rules, so the deterministic detector covers those languages without
+# relying on the PHP/JS-oriented regex discovery greps.
+ENV SEMGREP_CONFIG="/opt/apant-rules /opt/semgrep-rules/php /opt/semgrep-rules/javascript /opt/semgrep-rules/generic /opt/semgrep-rules/python /opt/semgrep-rules/java /opt/semgrep-rules/go /opt/semgrep-rules/ruby"
 ENV SCANNER_WORKSPACE_DIR=/workspace
 EXPOSE 8081
 
