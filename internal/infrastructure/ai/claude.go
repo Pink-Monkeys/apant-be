@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"time"
 
@@ -80,28 +79,22 @@ func (p *ClaudeProvider) Generate(ctx context.Context, in domain.AIGenerateInput
 		return domain.AIGenerateOutput{}, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.anthropic.com/v1/messages", bytes.NewReader(b))
+	status, body, err := doJSONWithRetry(ctx, p.client, "claude", func() (*http.Request, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.anthropic.com/v1/messages", bytes.NewReader(b))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("x-api-key", p.apiKey)
+		req.Header.Set("anthropic-version", "2023-06-01")
+		req.Header.Set("content-type", "application/json")
+		return req, nil
+	})
 	if err != nil {
 		return domain.AIGenerateOutput{}, err
 	}
 
-	req.Header.Set("x-api-key", p.apiKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
-	req.Header.Set("content-type", "application/json")
-
-	resp, err := p.client.Do(req)
-	if err != nil {
-		return domain.AIGenerateOutput{}, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return domain.AIGenerateOutput{}, err
-	}
-
-	if resp.StatusCode >= 300 {
-		return domain.AIGenerateOutput{}, domain.NewProviderError(resp.StatusCode, body)
+	if status >= 300 {
+		return domain.AIGenerateOutput{}, domain.NewProviderError(status, body)
 	}
 
 	var out claudeResponse

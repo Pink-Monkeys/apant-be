@@ -6,6 +6,13 @@ type AIGenerateInput struct {
 	Model  string
 	System string
 	User   string
+	// Effort is an optional reasoning-effort hint ("low", "medium", "high") for
+	// reasoning-capable models. Providers that support it (OpenAI Responses API
+	// with a reasoning model) translate it to the provider's reasoning control;
+	// everyone else ignores it. Empty means "let the provider decide" — the
+	// pre-existing behavior. Cheap decision steps pass "low" to cut latency/cost;
+	// synthesis steps pass "high" so report quality is preserved.
+	Effort string
 }
 
 type AIGenerateOutput struct {

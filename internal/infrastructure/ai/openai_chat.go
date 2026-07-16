@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -88,29 +87,24 @@ func (p *OpenAIChatProvider) Generate(ctx context.Context, in domain.AIGenerateI
 		return domain.AIGenerateOutput{}, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL+"/v1/chat/completions", bytes.NewReader(b))
-	if err != nil {
-		return domain.AIGenerateOutput{}, err
-	}
-	req.Header.Set("Authorization", "Bearer "+p.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := p.client.Do(req)
+	status, body, err := doJSONWithRetry(ctx, p.client, "openai-chat", func() (*http.Request, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL+"/v1/chat/completions", bytes.NewReader(b))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+p.apiKey)
+		req.Header.Set("Content-Type", "application/json")
+		return req, nil
+	})
 	if err != nil {
 		log.Printf("openai-chat: request to %s failed: %v", p.baseURL, err)
 		return domain.AIGenerateOutput{}, err
 	}
-	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return domain.AIGenerateOutput{}, err
-	}
-
-	if resp.StatusCode >= 300 {
+	if status >= 300 {
 		log.Printf("openai-chat: %s/v1/chat/completions model=%q status=%d body=%s",
-			p.baseURL, model, resp.StatusCode, truncate(string(body), 500))
-		return domain.AIGenerateOutput{}, domain.NewProviderError(resp.StatusCode, body)
+			p.baseURL, model, status, truncate(string(body), 500))
+		return domain.AIGenerateOutput{}, domain.NewProviderError(status, body)
 	}
 
 	var out chatCompletionResponse
