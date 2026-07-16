@@ -1,0 +1,52 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="2. Register" id="reg">
+    <mxGraphModel dx="1000" dy="700" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1240" pageHeight="860" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="a" value="" style="ellipse;fillColor=#000000;strokeColor=#000000;html=1;" vertex="1" parent="1"><mxGeometry x="175" y="60" width="30" height="30" as="geometry"/></mxCell>
+        <mxCell id="b" value="Isi username, email, password" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="85.0" y="110" width="210" height="54" as="geometry"/></mxCell>
+        <mxCell id="c" value="Submit form register" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="85.0" y="200" width="210" height="54" as="geometry"/></mxCell>
+        <mxCell id="d" value="Validasi format (username, email,
+password 8-72 huruf+angka)" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="375.0" y="110" width="210" height="54" as="geometry"/></mxCell>
+        <mxCell id="e" value="Format
+valid?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F9A825;fontSize=11;" vertex="1" parent="1"><mxGeometry x="410.0" y="200" width="140" height="78" as="geometry"/></mxCell>
+        <mxCell id="f" value="Cek username &amp; email
+sudah dipakai?" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="375.0" y="315" width="210" height="54" as="geometry"/></mxCell>
+        <mxCell id="g" value="Sudah
+dipakai?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F9A825;fontSize=11;" vertex="1" parent="1"><mxGeometry x="410.0" y="405" width="140" height="78" as="geometry"/></mxCell>
+        <mxCell id="h" value="Hash password (bcrypt),
+simpan user (role: pentester)" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="375.0" y="520" width="210" height="54" as="geometry"/></mxCell>
+        <mxCell id="i" value="Terbitkan token pair &amp;
+set cookie auth" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="375.0" y="610" width="210" height="54" as="geometry"/></mxCell>
+        <mxCell id="j" value="Kembalikan data user (201)" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="375.0" y="700" width="210" height="54" as="geometry"/></mxCell>
+        <mxCell id="err" value="Kembalikan error
+(400 / 409)" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FDECEA;strokeColor=#C62828;fontSize=11;" vertex="1" parent="1"><mxGeometry x="560.0" y="300" width="150" height="140" as="geometry"/></mxCell>
+        <mxCell id="k" value="Tampilkan pesan error" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="85.0" y="420" width="210" height="54" as="geometry"/></mxCell>
+        <mxCell id="l" value="" style="ellipse;fillColor=none;strokeColor=#000000;strokeWidth=2;html=1;" vertex="1" parent="1"><mxGeometry x="174" y="520" width="32" height="32" as="geometry"/></mxCell>
+        <mxCell id="li" value="" style="ellipse;fillColor=#000000;strokeColor=#000000;html=1;" vertex="1" parent="1"><mxGeometry x="182" y="528" width="16" height="16" as="geometry"/></mxCell>
+        <mxCell id="m" value="Masuk ke dashboard" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1"><mxGeometry x="85.0" y="700" width="210" height="54" as="geometry"/></mxCell>
+        <mxCell id="n" value="" style="ellipse;fillColor=none;strokeColor=#000000;strokeWidth=2;html=1;" vertex="1" parent="1"><mxGeometry x="174" y="790" width="32" height="32" as="geometry"/></mxCell>
+        <mxCell id="ni" value="" style="ellipse;fillColor=#000000;strokeColor=#000000;html=1;" vertex="1" parent="1"><mxGeometry x="182" y="798" width="16" height="16" as="geometry"/></mxCell>
+        <mxCell id="reg_e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="a" target="b"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="reg_e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="b" target="c"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="reg_e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="c" target="d"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="reg_e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="d" target="e"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="reg_e5" value="Ya" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="e" target="f"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="reg_e6" value="Tidak" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="e" target="err"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="635" y="239"/></Array></mxGeometry></mxCell>
+        <mxCell id="reg_e7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="f" target="g"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="reg_e8" value="Tidak" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="g" target="h"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="reg_e9" value="Ya" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="g" target="err"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="635" y="444"/></Array></mxGeometry></mxCell>
+        <mxCell id="reg_e10" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="h" target="i"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="reg_e11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="i" target="j"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="reg_e12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="j" target="m"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="190" y="726"/></Array></mxGeometry></mxCell>
+        <mxCell id="reg_e13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="m" target="n"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="reg_e14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="err" target="k"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="190" y="370"/></Array></mxGeometry></mxCell>
+        <mxCell id="reg_e15" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="k" target="l"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell>
+        <mxCell id="reg_panel" value="&lt;b&gt;Deskripsi Activity Diagram: Register&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Aktor:&lt;/b&gt; User (Pentester)&lt;br&gt;&lt;b&gt;Tujuan:&lt;/b&gt; Membuat akun baru (role default: pentester) dan langsung menerbitkan sesi.&lt;br&gt;&lt;br&gt;&lt;b&gt;Alur Utama:&lt;/b&gt;&lt;br&gt;1. User mengisi username, email, dan password lalu submit.&lt;br&gt;2. Sistem memvalidasi format: username (3-32, a-z0-9_.-), email valid, password 8-72 karakter mengandung huruf dan angka.&lt;br&gt;3. Sistem memeriksa apakah username/email sudah dipakai.&lt;br&gt;4. Sistem meng-hash password (bcrypt) dan menyimpan user baru dengan role pentester.&lt;br&gt;5. Sistem menerbitkan pasangan token dan menyetel cookie auth (201 Created).&lt;br&gt;6. User masuk ke dashboard.&lt;br&gt;&lt;br&gt;&lt;b&gt;Alur Alternatif / Pengecualian:&lt;/b&gt;&lt;br&gt;- 2a. Format tidak valid: sistem mengembalikan error 400.&lt;br&gt;- 3a. Username/email sudah dipakai: sistem mengembalikan error 409 (Conflict).&lt;br&gt;" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fillColor=#FCFCFC;strokeColor=#90A4AE;fontSize=11;spacingLeft=10;spacingRight=10;spacingTop=8;" vertex="1" parent="1"><mxGeometry x="760" y="50" width="440" height="415" as="geometry"/></mxCell>
+        <mxCell id="L_reg" value="User (Pentester)" style="swimlane;html=1;startSize=30;horizontal=1;fontSize=13;fontStyle=1;rounded=0;swimlaneFillColor=#E3F2FD;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=2;verticalAlign=top;align=center;" vertex="1" parent="1"><mxGeometry x="40" y="40" width="300" height="800" as="geometry"/></mxCell>
+        <mxCell id="R_reg" value="Sistem (APANT Backend)" style="swimlane;html=1;startSize=30;horizontal=1;fontSize=13;fontStyle=1;rounded=0;swimlaneFillColor=#F1F8E9;fillColor=#F1F8E9;strokeColor=#2E7D32;strokeWidth=2;verticalAlign=top;align=center;" vertex="1" parent="1"><mxGeometry x="360" y="40" width="360" height="800" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
