@@ -50,7 +50,7 @@ services:
       HOME: "/home/scanner"
       MITMPROXY_DIR: "/home/scanner/.mitmproxy"
       SCANNER_WORKSPACE_DIR: /workspace
-      SEMGREP_CONFIG: "/opt/apant-rules /opt/semgrep-rules/php /opt/semgrep-rules/javascript /opt/semgrep-rules/generic"
+      SEMGREP_CONFIG: "/opt/apant-rules /opt/semgrep-rules/php /opt/semgrep-rules/javascript /opt/semgrep-rules/generic /opt/semgrep-rules/python /opt/semgrep-rules/java /opt/semgrep-rules/go /opt/semgrep-rules/ruby"
     ports:
       - "8081:8081"
     volumes:
