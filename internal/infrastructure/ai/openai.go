@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -47,8 +46,50 @@ func (p *OpenAIProvider) Name() string {
 }
 
 type openAIRequest struct {
-	Model string `json:"model"`
-	Input []any  `json:"input"`
+	Model     string           `json:"model"`
+	Input     []any            `json:"input"`
+	Reasoning *openAIReasoning `json:"reasoning,omitempty"`
+}
+
+// openAIReasoning carries the reasoning-effort control for OpenAI reasoning
+// models on the Responses API. Sent only when an effort is requested AND the
+// model is reasoning-capable — the API rejects this field on non-reasoning
+// models, so it must stay omitted otherwise (hence the pointer + omitempty).
+type openAIReasoning struct {
+	Effort string `json:"effort"`
+}
+
+// isReasoningModel reports whether a model name is an OpenAI reasoning model that
+// accepts reasoning.effort (the o-series and gpt-5 family). A conservative name
+// prefix check: matching too broadly would send an unsupported field to a plain
+// chat model and hard-fail the request, so unknown names default to "no".
+func isReasoningModel(model string) bool {
+	m := strings.ToLower(strings.TrimSpace(model))
+	switch {
+	case strings.HasPrefix(m, "gpt-5"):
+		return true
+	case strings.HasPrefix(m, "o1"), strings.HasPrefix(m, "o3"), strings.HasPrefix(m, "o4"):
+		return true
+	default:
+		return false
+	}
+}
+
+// normalizeEffort validates a requested effort against the values the Responses
+// API accepts, returning "" (omit the field) for anything unrecognized.
+func normalizeEffort(effort string) string {
+	switch strings.ToLower(strings.TrimSpace(effort)) {
+	case "minimal":
+		return "minimal"
+	case "low":
+		return "low"
+	case "medium":
+		return "medium"
+	case "high":
+		return "high"
+	default:
+		return ""
+	}
 }
 
 type openAIResponse struct {
@@ -94,33 +135,32 @@ func (p *OpenAIProvider) Generate(ctx context.Context, in domain.AIGenerateInput
 	})
 
 	reqBody := openAIRequest{Model: model, Input: input}
+	// Attach reasoning-effort only when requested AND the model supports it;
+	// otherwise the field must be absent (see openAIReasoning).
+	if effort := normalizeEffort(in.Effort); effort != "" && isReasoningModel(model) {
+		reqBody.Reasoning = &openAIReasoning{Effort: effort}
+	}
 
 	b, err := json.Marshal(reqBody)
 	if err != nil {
 		return domain.AIGenerateOutput{}, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL+"/v1/responses", bytes.NewReader(b))
+	status, body, err := doJSONWithRetry(ctx, p.client, "openai", func() (*http.Request, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL+"/v1/responses", bytes.NewReader(b))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+p.apiKey)
+		req.Header.Set("Content-Type", "application/json")
+		return req, nil
+	})
 	if err != nil {
 		return domain.AIGenerateOutput{}, err
 	}
 
-	req.Header.Set("Authorization", "Bearer "+p.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := p.client.Do(req)
-	if err != nil {
-		return domain.AIGenerateOutput{}, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return domain.AIGenerateOutput{}, err
-	}
-
-	if resp.StatusCode >= 300 {
-		return domain.AIGenerateOutput{}, domain.NewProviderError(resp.StatusCode, body)
+	if status >= 300 {
+		return domain.AIGenerateOutput{}, domain.NewProviderError(status, body)
 	}
 
 	var out openAIResponse
