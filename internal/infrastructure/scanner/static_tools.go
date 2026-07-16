@@ -34,6 +34,38 @@ const (
 // never be used to traverse out of the workspace root.
 var workspaceIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
 
+// staticDependencyDirs are third-party/build directories excluded from SAST CODE
+// scanning (semgrep + grep_code). Findings inside bundled dependencies are about
+// code the app author does not own and flood the report — one Python upload
+// produced 344 of 359 findings inside its venv/site-packages. Vendored-component
+// CVEs stay covered by the OSV/retire.js detector, which reads these dirs
+// separately, so excluding them here loses no real coverage.
+var staticDependencyDirs = []string{
+	"node_modules", "bower_components", "vendor", "third_party", "third-party",
+	"venv", ".venv", "virtualenv", "site-packages", "__pycache__", ".tox",
+	"dist", "build", "target", ".next", ".nuxt", ".git",
+}
+
+// semgrepExcludeArgs expands staticDependencyDirs into semgrep --exclude flags.
+func semgrepExcludeArgs() []string {
+	args := make([]string, 0, len(staticDependencyDirs)*2)
+	for _, d := range staticDependencyDirs {
+		args = append(args, "--exclude", d)
+	}
+	return args
+}
+
+// ripgrepExcludeArgs expands staticDependencyDirs into ripgrep exclude globs, so a
+// vendored tree does not pollute the coverage-gate sink checklist with thousands
+// of dependency locations.
+func ripgrepExcludeArgs() []string {
+	args := make([]string, 0, len(staticDependencyDirs)*2)
+	for _, d := range staticDependencyDirs {
+		args = append(args, "--glob", "!**/"+d+"/**")
+	}
+	return args
+}
+
 // resolveWorkspace returns the validated absolute source directory for a scan.
 func (e *MultiExecutor) resolveWorkspace(intent *domain.ToolIntent) (string, error) {
 	scanID, _ := intent.Params["scan_id"].(string)
@@ -252,6 +284,7 @@ func (e *MultiExecutor) executeGrepCode(intent *domain.ToolIntent) map[string]an
 		"--line-number", "--no-heading", "--color", "never",
 		"--max-count", "20", "--max-columns", "300", "--smart-case",
 	}
+	args = append(args, ripgrepExcludeArgs()...)
 	if glob, ok := intent.Params["glob"].(string); ok && strings.TrimSpace(glob) != "" {
 		args = append(args, "--glob", strings.TrimSpace(glob))
 	}
@@ -370,8 +403,9 @@ func (e *MultiExecutor) runSemgrepConfig(base, config string) ([]map[string]any,
 	args := []string{
 		"--json", "--quiet", "--metrics=off", "--disable-version-check",
 		"--timeout", "30", "--max-target-bytes", "2000000",
-		"--config", config, base,
 	}
+	args = append(args, semgrepExcludeArgs()...)
+	args = append(args, "--config", config, base)
 
 	stdout, stderr, _, timedOut := e.runStaticCmd("semgrep", args...)
 	if timedOut {
