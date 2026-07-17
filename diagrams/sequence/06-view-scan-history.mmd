@@ -1,0 +1,21 @@
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant FE as Frontend (SPA)
+  participant API as Backend API
+  participant DB as PostgreSQL
+
+  U->>FE: Buka halaman "Riwayat Scan"
+  FE->>API: GET /api/v1/scans
+  API->>DB: SELECT scans WHERE user_id = ? (urut terbaru)
+  DB-->>API: Daftar scan
+  API-->>FE: 200 OK [scans]
+  FE-->>U: Tampilkan daftar riwayat
+  opt Lihat detail satu scan
+    U->>FE: Klik salah satu scan
+    FE->>API: GET /api/v1/scans/{id}
+    API->>DB: Ambil detail scan + langkah/temuan
+    DB-->>API: Detail scan
+    API-->>FE: 200 OK {detail}
+    FE-->>U: Tampilkan detail (status, langkah, temuan)
+  end

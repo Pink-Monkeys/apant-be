@@ -1,0 +1,64 @@
+sequenceDiagram
+  autonumber
+  actor U as User (Pentester)
+  participant FE as Frontend (SPA)
+  participant API as Backend API
+  participant DB as PostgreSQL
+  participant AG as Agent Loop
+  participant LLM as LLM Provider
+  participant TL as Scanner Tools
+  participant T as Target
+
+  U->>FE: Pilih target, scan profile, provider/model, (auth), max_steps
+  FE->>API: POST /api/v1/dynamic/scan {target, profile, model, ...}
+  API->>API: Validasi provider/model, cek scan berjalan (1 per user)
+  alt Tidak valid / sudah ada scan berjalan
+    API-->>FE: 4xx / 409
+    FE-->>U: Tampilkan error
+  else Valid
+    API->>DB: Simpan scan status "running", buat scan_id
+    API-->>FE: 202 Accepted {scan_id}
+    Note over API,AG: Proses berjalan asinkron (background)
+
+    par Proses background (Sistem)
+      API->>AG: Mulai agent loop
+      AG->>TL: Recon prelude (httpx_probe, katana_crawl)
+      TL->>T: Probe & crawl
+      T-->>TL: Respons
+      TL-->>AG: Hasil recon
+      loop Tiap step (sampai final / max_steps / cancel)
+        AG->>LLM: Kirim transcript
+        LLM-->>AG: Aksi (thought / tool / final)
+        alt Aksi = tool
+          AG->>AG: Validasi guard (profile, scope/SSRF, payload, policy)
+          alt Lolos guard
+            AG->>TL: Eksekusi tool
+            TL->>T: Uji keamanan terkontrol
+            T-->>TL: Respons
+            TL-->>AG: Observasi + signals (+1 step)
+          else Ditolak guard
+            AG->>AG: Catat REJECTED ke transcript
+          end
+        end
+      end
+      AG->>DB: Simpan status terminal (completed/failed/cancelled)
+      opt Status completed
+        AG->>DB: Simpan laporan otomatis
+      end
+    and Alur User (polling)
+      loop Sampai status bukan "running"
+        FE->>API: GET /api/v1/scans/{scan_id}
+        API->>DB: Ambil status & progress
+        DB-->>API: Status
+        API-->>FE: Status / progress
+      end
+      opt User membatalkan scan
+        U->>FE: Klik "Cancel"
+        FE->>API: POST /api/v1/scans/{scan_id}/cancel
+        API->>DB: Tandai permintaan batal
+        Note over AG: Loop berhenti di antara langkah
+      end
+    end
+
+    FE-->>U: Tampilkan hasil scan + laporan
+  end

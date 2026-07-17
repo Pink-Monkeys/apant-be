@@ -1,0 +1,23 @@
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant FE as Frontend
+  participant API as Backend
+  participant AG as Agent (LLM + Tools)
+
+  U->>FE: Atur target, profile & model, klik "Run Scan"
+  FE->>API: POST /api/v1/dynamic/scan
+  API-->>FE: 202 Accepted (scan_id)
+  Note over API,AG: Scan berjalan di background
+
+  API->>AG: Mulai agent loop
+  loop Sampai selesai (final / batas langkah)
+    AG->>AG: LLM pilih tool, jalankan, catat temuan
+  end
+  AG->>API: Simpan hasil + laporan
+
+  loop User cek berkala
+    FE->>API: GET /api/v1/scans/{scan_id}
+    API-->>FE: Status (running / selesai)
+  end
+  FE-->>U: Tampilkan hasil scan + laporan

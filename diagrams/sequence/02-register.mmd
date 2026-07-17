@@ -1,0 +1,27 @@
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant FE as Frontend (SPA)
+  participant API as Backend API
+  participant DB as PostgreSQL
+
+  U->>FE: Isi nama, email, password
+  FE->>API: POST /api/v1/auth/register {name, email, password}
+  API->>API: Validasi input (format email, panjang password)
+  alt Input tidak valid
+    API-->>FE: 400 Bad Request
+    FE-->>U: Tampilkan error validasi
+  else Input valid
+    API->>DB: SELECT user WHERE email = ?
+    DB-->>API: Hasil pengecekan
+    alt Email sudah terdaftar
+      API-->>FE: 409 Conflict
+      FE-->>U: "Email sudah digunakan"
+    else Email tersedia
+      API->>API: Hash password (bcrypt)
+      API->>DB: INSERT user (role = user)
+      DB-->>API: User tersimpan
+      API-->>FE: 201 Created
+      FE-->>U: Registrasi berhasil, arahkan ke Login
+    end
+  end

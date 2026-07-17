@@ -1,0 +1,42 @@
+sequenceDiagram
+  autonumber
+  actor A as Admin
+  participant FE as Frontend (SPA)
+  participant API as Backend API
+  participant DB as PostgreSQL
+  participant P as Provider LLM (eksternal)
+
+  A->>FE: Buka halaman "Kelola Provider LLM"
+  FE->>API: GET /api/v1/llm/providers (cookie + X-CSRF-Token)
+  API->>API: Autentikasi & cek role admin
+  alt Bukan admin
+    API-->>FE: 403 Forbidden
+    FE-->>A: Tampilkan "akses ditolak"
+  else Admin
+    API->>DB: Ambil daftar provider & model
+    DB-->>API: Daftar provider
+    API-->>FE: 200 OK [providers]
+    FE-->>A: Tampilkan daftar
+
+    alt Tambah / ubah provider
+      A->>FE: Isi nama, base URL, API key
+      FE->>API: POST /llm/providers atau PATCH /llm/providers/{id}
+      API->>API: Enkripsi API key
+      API->>DB: Simpan provider
+    else Kelola model
+      A->>FE: Tambah / ubah / hapus model
+      FE->>API: POST atau PATCH atau DELETE /llm/providers/{id}/models
+      API->>DB: Simpan perubahan model
+    else Hapus provider
+      A->>FE: Konfirmasi hapus
+      FE->>API: DELETE /llm/providers/{id}
+      API->>DB: Hapus provider & modelnya
+    else Uji koneksi (Test)
+      A->>FE: Klik "Test"
+      FE->>API: POST /llm/providers/{id}/test
+      API->>P: Panggil provider (cek koneksi)
+      P-->>API: Status koneksi
+    end
+    API-->>FE: Daftar provider terbaru
+    FE-->>A: Tampilkan hasil
+  end

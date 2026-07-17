@@ -1,0 +1,52 @@
+sequenceDiagram
+  autonumber
+  actor U as User (Pentester)
+  participant FE as Frontend (SPA)
+  participant API as Backend API
+  participant DB as PostgreSQL
+  participant FS as Workspace (temp)
+  participant AG as Agent Loop
+  participant LLM as LLM Provider
+  participant TL as Tools SAST
+
+  U->>FE: Pilih file source (.zip), provider/model, deskripsi
+  FE->>API: POST /api/v1/static/scan (multipart: file .zip)
+  API->>API: Cek file ada & .zip, validasi provider/model, cek scan berjalan
+  alt Tidak valid / sudah ada scan berjalan
+    API-->>FE: 400 / 409
+    FE-->>U: Tampilkan error
+  else Valid
+    API->>FS: Simpan upload ke temp
+    API->>DB: Simpan scan "running", buat scan_id
+    API-->>FE: 202 Accepted {scan_id}
+    Note over API,AG: Proses berjalan asinkron (background)
+
+    par Proses background (Sistem)
+      API->>FS: Ekstrak ZIP ke workspace (batasi jumlah file & ukuran)
+      alt Arsip valid
+        loop Triage (sampai final / max_steps)
+          AG->>LLM: Minta aksi berikutnya
+          LLM-->>AG: Pilih tool SAST
+          AG->>TL: semgrep / gitleaks / osv / read_file / grep_code
+          TL-->>AG: Temuan
+        end
+        AG->>AG: Susun temuan + rekomendasi remediasi
+      else Arsip tidak valid
+        AG->>AG: Tandai gagal (failed)
+      end
+      AG->>FS: Hapus temp & workspace
+      AG->>DB: Simpan status terminal
+      opt Status completed
+        AG->>DB: Simpan laporan SAST otomatis
+      end
+    and Alur User (polling)
+      loop Sampai status bukan "running"
+        FE->>API: GET /api/v1/scans/{scan_id}
+        API->>DB: Ambil status
+        DB-->>API: Status
+        API-->>FE: Status / progress
+      end
+    end
+
+    FE-->>U: Tampilkan hasil scan + laporan
+  end

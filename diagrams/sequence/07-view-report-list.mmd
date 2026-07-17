@@ -1,0 +1,29 @@
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant FE as Frontend (SPA)
+  participant API as Backend API
+  participant DB as PostgreSQL
+
+  U->>FE: Buka halaman "Laporan"
+  FE->>API: GET /api/v1/reports
+  API->>DB: SELECT reports WHERE user_id = ?
+  DB-->>API: Daftar laporan
+  API-->>FE: 200 OK [reports]
+  FE-->>U: Tampilkan daftar laporan
+  opt Lihat / unduh laporan
+    U->>FE: Klik salah satu laporan
+    FE->>API: GET /api/v1/reports/{id}
+    API->>DB: Ambil isi laporan
+    DB-->>API: Data laporan
+    API-->>FE: 200 OK {report}
+    FE-->>U: Tampilkan / unduh laporan (PDF)
+  end
+  opt Hapus laporan
+    U->>FE: Klik "Hapus"
+    FE->>API: DELETE /api/v1/reports/{id}
+    API->>DB: Hapus laporan
+    DB-->>API: Berhasil
+    API-->>FE: 200 OK
+    FE-->>U: Perbarui daftar laporan
+  end
