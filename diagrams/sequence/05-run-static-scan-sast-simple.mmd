@@ -1,0 +1,23 @@
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant FE as Frontend
+  participant API as Backend
+  participant AG as Agent (Tools SAST)
+
+  U->>FE: Pilih file .zip & model, klik "Run Static Scan"
+  FE->>API: POST /api/v1/static/scan (file .zip)
+  API-->>FE: 202 Accepted (scan_id)
+  Note over API,AG: Analisis berjalan di background
+
+  API->>AG: Ekstrak ZIP, mulai analisis
+  loop Sampai selesai
+    AG->>AG: Pilih tool SAST (semgrep / gitleaks / osv), catat temuan
+  end
+  AG->>API: Simpan temuan + laporan, hapus workspace
+
+  loop User cek berkala
+    FE->>API: GET /api/v1/scans/{scan_id}
+    API-->>FE: Status (running / selesai)
+  end
+  FE-->>U: Tampilkan hasil scan + laporan

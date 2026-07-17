@@ -1,0 +1,21 @@
+sequenceDiagram
+  autonumber
+  actor U as User (Pentester)
+  participant FE as Frontend (SPA)
+  participant API as Backend API
+  participant DB as PostgreSQL
+
+  U->>FE: Isi email & password, klik "Login"
+  FE->>API: POST /api/v1/auth/login {email, password}
+  API->>DB: SELECT user WHERE email = ?
+  DB-->>API: Data user (+ password hash)
+  API->>API: Verifikasi password (bcrypt)
+  alt Kredensial valid
+    API->>API: Terbitkan access + refresh token (JWT) & CSRF token
+    API-->>FE: 200 OK + Set-Cookie (access, refresh, csrf) + data user
+    FE->>FE: Simpan status login
+    FE-->>U: Masuk ke dashboard
+  else Kredensial salah
+    API-->>FE: 401 Unauthorized
+    FE-->>U: Tampilkan pesan "email atau password salah"
+  end

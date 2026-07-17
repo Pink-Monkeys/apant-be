@@ -1,0 +1,194 @@
+classDiagram
+  direction LR
+
+  class AuthService {
+    <<service>>
+    +Register()
+    +Login()
+    +Logout()
+    +RefreshToken()
+    +UpdateProfile()
+    +ChangePassword()
+    +Me()
+  }
+
+  class UserService {
+    <<service>>
+    +Create()
+    +List()
+    +UpdateRole()
+    +ResetPassword()
+    +Delete()
+  }
+
+  class PentestService {
+    <<service>>
+    +StartAgentLoopAsync()
+    +StartStaticScanAsync()
+    +ListScans()
+    +GetScan()
+    +CancelScan()
+    +CreateReportFromScan()
+    +ListReports()
+    +GetReport()
+    +DeleteReport()
+  }
+
+  class LLMService {
+    <<service>>
+    +ListProviders()
+    +CreateProvider()
+    +UpdateProvider()
+    +DeleteProvider()
+    +AddModel()
+    +DeleteModel()
+    +TestProvider()
+    +Options()
+    +GetSelection()
+    +SetSelection()
+  }
+
+  class UserRepository {
+    <<repository>>
+    +Create()
+    +FindByEmail()
+    +FindByID()
+    +UpdateProfile()
+    +UpdatePassword()
+    +ListUsers()
+    +UpdateRole()
+    +DeleteUser()
+  }
+
+  class ScanRepository {
+    <<repository>>
+    +Save()
+    +FindByID()
+    +FindByUserID()
+    +FindRunningByUserID()
+  }
+
+  class ReportRepository {
+    <<repository>>
+    +Save()
+    +FindByID()
+    +FindByUserID()
+    +DeleteByID()
+  }
+
+  class LLMProviderRepository {
+    <<repository>>
+    +ListProviders()
+    +GetProvider()
+    +CreateProvider()
+    +UpdateProvider()
+    +DeleteProvider()
+    +AddModel()
+    +UpdateModel()
+    +DeleteModel()
+  }
+
+  class UserLLMPreferenceRepository {
+    <<repository>>
+    +Get()
+    +Upsert()
+  }
+
+  class User {
+    <<entity>>
+    +string id
+    +string username
+    +string email
+    +string passwordHash
+    +string role
+    +datetime createdAt
+    +datetime updatedAt
+  }
+
+  class Scan {
+    <<entity>>
+    +string id
+    +string userId
+    +string sessionId
+    +string target
+    +string provider
+    +string model
+    +string scanType
+    +string status
+    +string finalAnswer
+    +string duration
+    +datetime createdAt
+  }
+
+  class Report {
+    <<entity>>
+    +string id
+    +string scanId
+    +string userId
+    +string overallSeverity
+    +datetime createdAt
+  }
+
+  class LLMProvider {
+    <<entity>>
+    +string id
+    +string name
+    +string adapterType
+    +bytes apiKeyEnc
+    +string baseUrl
+    +bool enabled
+  }
+
+  class UserLLMPreference {
+    <<entity>>
+    +string userId
+    +string provider
+    +string model
+    +datetime updatedAt
+  }
+
+  class ScanStep {
+    <<entity>>
+    +int stepNumber
+    +string toolName
+    +object params
+    +object result
+    +string summary
+  }
+
+  class ReportVuln {
+    <<entity>>
+    +string id
+    +string title
+    +string severity
+    +string type
+    +string location
+    +string recommendation
+    +bool verified
+    +float cvssScore
+    +string cwe
+  }
+
+  class LLMModel {
+    <<entity>>
+    +string id
+    +string providerId
+    +string modelId
+    +string label
+    +bool enabled
+  }
+
+  AuthService ..> UserRepository : uses
+  UserService ..> UserRepository : uses
+  PentestService ..> ScanRepository : uses
+  PentestService ..> ReportRepository : uses
+  LLMService ..> LLMProviderRepository : uses
+  LLMService ..> UserLLMPreferenceRepository : uses
+  UserRepository ..> User : manages
+  ScanRepository ..> Scan : manages
+  ReportRepository ..> Report : manages
+  LLMProviderRepository ..> LLMProvider : manages
+  UserLLMPreferenceRepository ..> UserLLMPreference : manages
+  Scan "1" *-- "0..*" ScanStep : owns
+  Report "1" *-- "0..*" ReportVuln : owns
+  LLMProvider "1" *-- "0..*" LLMModel : offers

@@ -1,0 +1,15 @@
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant FE as Frontend (SPA)
+  participant API as Backend API
+  participant DB as PostgreSQL
+
+  U->>FE: Klik "Logout"
+  FE->>API: POST /api/v1/auth/logout (cookie access + X-CSRF-Token)
+  API->>API: Validasi sesi (JWT) & CSRF
+  API->>DB: Revoke refresh token
+  DB-->>API: Berhasil
+  API-->>FE: 200 OK + hapus cookie (access, refresh, csrf)
+  FE->>FE: Bersihkan status login
+  FE-->>U: Kembali ke halaman Login

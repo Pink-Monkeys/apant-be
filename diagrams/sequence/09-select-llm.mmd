@@ -1,0 +1,34 @@
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant FE as Frontend (SPA)
+  participant API as Backend API
+  participant DB as PostgreSQL
+
+  U->>FE: Buka pemilihan model LLM
+  FE->>API: GET /api/v1/llm/options
+  API->>DB: Ambil provider & model aktif
+  DB-->>API: Daftar opsi
+  API-->>FE: 200 OK [options]
+  FE-->>U: Tampilkan pilihan provider + model
+
+  opt Muat pilihan saat ini
+    FE->>API: GET /api/v1/llm/selection
+    API->>DB: Ambil preferensi user
+    DB-->>API: Selection
+    API-->>FE: 200 OK {selection}
+    FE-->>U: Tandai pilihan aktif
+  end
+
+  U->>FE: Pilih provider + model
+  FE->>API: PUT /api/v1/llm/selection {providerId, modelId}
+  API->>API: Validasi opsi tersedia & aktif
+  alt Opsi tidak valid
+    API-->>FE: 400 Bad Request
+    FE-->>U: Tampilkan error
+  else Opsi valid
+    API->>DB: Simpan preferensi user
+    DB-->>API: Berhasil
+    API-->>FE: 200 OK
+    FE-->>U: Konfirmasi "model tersimpan"
+  end
