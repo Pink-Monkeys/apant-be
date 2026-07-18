@@ -53,6 +53,7 @@ func RegisterRouter(
 	protected.Get("/sessions/:id", session.Get)
 
 	protected.Get("/scans", scan.ListScans)
+	protected.Get("/scans/targets", scan.ListScanTargets)
 	protected.Get("/scans/:id", scan.GetScan)
 	protected.Post("/scans/:id/cancel", scan.CancelScan)
 

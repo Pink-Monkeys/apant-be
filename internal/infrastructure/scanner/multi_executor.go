@@ -525,6 +525,10 @@ func (e *MultiExecutor) buildFfufArgs(intent *domain.ToolIntent) ([]string, erro
 		"-json",
 	}
 
+	// Forward the authenticated session so content discovery reaches paths behind
+	// a login, matching the other tools (httpx, katana, nuclei, dalfox, sqlmap).
+	args = appendAuthAsHeaders(args, "-H", intent.Params)
+
 	return args, nil
 }
 
@@ -579,7 +583,14 @@ func (e *MultiExecutor) buildDalfoxArgs(intent *domain.ToolIntent) ([]string, er
 		return nil, fmt.Errorf("dalfox_xss requires target")
 	}
 
-	args := []string{"url", target, "--silence"}
+	// --format json makes each proof-of-concept a machine-parseable line the report
+	// layer turns into an XSS finding (see parseDalfoxFindings); --silence keeps stdout
+	// to PoCs only so the result count stays meaningful; --follow-redirects reaches
+	// sinks behind a redirect. Headless DOM verification (--deep-domxss) is deliberately
+	// NOT enabled: it needs a Chromium binary the scanner image does not ship, so it
+	// would only error/stall. dalfox's default dictionary + static DOM parameter mining
+	// still runs, so reflected XSS on parameterized URLs is covered.
+	args := []string{"url", target, "--silence", "--format", "json", "--follow-redirects"}
 
 	cookie, headers := authFromParams(intent.Params)
 	if cookie != "" {

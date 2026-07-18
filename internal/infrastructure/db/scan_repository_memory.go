@@ -66,6 +66,74 @@ func (r *MemoryScanRepository) FindByUserID(_ context.Context, userID string) ([
 	return out, nil
 }
 
+func (r *MemoryScanRepository) FindByUserIDFiltered(_ context.Context, userID string, filter domain.ScanFilter) ([]domain.Scan, int64, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	matched := make([]domain.Scan, 0)
+	target := strings.TrimSpace(filter.Target)
+	for _, scan := range r.scans {
+		if userID != "" && scan.UserID != userID {
+			continue
+		}
+		if !filter.From.IsZero() && scan.CreatedAt.Before(filter.From) {
+			continue
+		}
+		if !filter.To.IsZero() && scan.CreatedAt.After(filter.To) {
+			continue
+		}
+		if target != "" && scan.Target != target {
+			continue
+		}
+		matched = append(matched, scan)
+	}
+
+	sort.Slice(matched, func(i, j int) bool {
+		return matched[i].CreatedAt.After(matched[j].CreatedAt)
+	})
+
+	total := int64(len(matched))
+
+	if filter.Limit > 0 {
+		start := 0
+		if filter.Page > 1 {
+			start = (filter.Page - 1) * filter.Limit
+		}
+		if start >= len(matched) {
+			return []domain.Scan{}, total, nil
+		}
+		end := start + filter.Limit
+		if end > len(matched) {
+			end = len(matched)
+		}
+		matched = matched[start:end]
+	}
+
+	return matched, total, nil
+}
+
+func (r *MemoryScanRepository) DistinctTargets(_ context.Context, userID string) ([]string, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	seen := make(map[string]bool)
+	targets := make([]string, 0)
+	for _, scan := range r.scans {
+		if userID != "" && scan.UserID != userID {
+			continue
+		}
+		t := strings.TrimSpace(scan.Target)
+		if t == "" || seen[t] {
+			continue
+		}
+		seen[t] = true
+		targets = append(targets, t)
+	}
+
+	sort.Strings(targets)
+	return targets, nil
+}
+
 func (r *MemoryScanRepository) FindRunningByUserID(_ context.Context, userID string) (domain.Scan, bool, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
