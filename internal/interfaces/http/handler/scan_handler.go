@@ -1,11 +1,13 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
@@ -168,12 +170,83 @@ func (h *ScanHandler) ListScans(c fiber.Ctx) error {
 		userID = ""
 	}
 
-	scans, err := h.service.ListScans(c.Context(), userID)
+	req, err := parseListScansRequest(c)
+	if err != nil {
+		return httpx.JSONError(c, http.StatusBadRequest, err.Error())
+	}
+
+	result, err := h.service.ListScans(c.Context(), userID, req)
 	if err != nil {
 		return writeError(c, err)
 	}
 
-	return httpx.JSONSuccess(c, http.StatusOK, "scans retrieved successfully", scans)
+	return httpx.JSONSuccess(c, http.StatusOK, "scans retrieved successfully", result)
+}
+
+// parseListScansRequest reads range/from/to/target/page/limit query params. It
+// mirrors parseListReportsRequest so the scan list and report list share the same
+// filter contract. from/to are RFC3339 timestamps and take precedence over range.
+func parseListScansRequest(c fiber.Ctx) (pentest.ListScansRequest, error) {
+	req := pentest.ListScansRequest{
+		Range:  c.Query("range"),
+		Target: c.Query("target"),
+	}
+
+	if raw := c.Query("from"); raw != "" {
+		from, err := time.Parse(time.RFC3339, raw)
+		if err != nil {
+			return pentest.ListScansRequest{}, fmt.Errorf("invalid from (use RFC3339, e.g. 2026-07-01T00:00:00Z)")
+		}
+		req.From = from
+	}
+	if raw := c.Query("to"); raw != "" {
+		to, err := time.Parse(time.RFC3339, raw)
+		if err != nil {
+			return pentest.ListScansRequest{}, fmt.Errorf("invalid to (use RFC3339, e.g. 2026-07-13T23:59:59Z)")
+		}
+		req.To = to
+	}
+	if raw := c.Query("page"); raw != "" {
+		page, err := strconv.Atoi(raw)
+		if err != nil || page < 1 {
+			return pentest.ListScansRequest{}, fmt.Errorf("invalid page")
+		}
+		req.Page = page
+	}
+	if raw := c.Query("limit"); raw != "" {
+		limit, err := strconv.Atoi(raw)
+		if err != nil || limit < 0 || limit > 100 {
+			return pentest.ListScansRequest{}, fmt.Errorf("invalid limit (must be 0-100; 0 means unlimited)")
+		}
+		if limit == 0 {
+			// Explicit "no limit" request — distinct from the zero-value default,
+			// which normalizeScanFilter defaults to 20. Sentinel -1 so "unset" and
+			// "explicitly unlimited" don't collide on 0.
+			limit = -1
+		}
+		req.Limit = limit
+	}
+
+	return req, nil
+}
+
+// ListScanTargets returns the distinct targets across the caller's scans (all
+// users' scans for an admin) for the scan list's target filter dropdown.
+func (h *ScanHandler) ListScanTargets(c fiber.Ctx) error {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		return httpx.JSONError(c, http.StatusUnauthorized, "invalid auth claims")
+	}
+	if middleware.IsAdmin(c) {
+		userID = ""
+	}
+
+	targets, err := h.service.ListScanTargets(c.Context(), userID)
+	if err != nil {
+		return writeError(c, err)
+	}
+
+	return httpx.JSONSuccess(c, http.StatusOK, "scan targets retrieved", targets)
 }
 
 func (h *ScanHandler) GetScan(c fiber.Ctx) error {

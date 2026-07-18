@@ -178,6 +178,77 @@ func toDomainScan(model scanModel) (domain.Scan, error) {
 	}, nil
 }
 
+// FindByUserIDFiltered applies filter.From/To against created_at, filter.Target
+// against the target column, and filter.Page/Limit as LIMIT/OFFSET, returning the
+// matching page plus the total count of matching rows (ignoring pagination).
+func (r *ScanRepositoryPostgres) FindByUserIDFiltered(ctx context.Context, userID string, filter domain.ScanFilter) ([]domain.Scan, int64, error) {
+	userID = strings.TrimSpace(userID)
+
+	base := r.db.DB.WithContext(ctx).Model(&scanModel{})
+	if userID != "" {
+		base = base.Where("user_id = ?", userID)
+	}
+	if !filter.From.IsZero() {
+		base = base.Where("created_at >= ?", filter.From)
+	}
+	if !filter.To.IsZero() {
+		base = base.Where("created_at <= ?", filter.To)
+	}
+	if target := strings.TrimSpace(filter.Target); target != "" {
+		base = base.Where("target = ?", target)
+	}
+
+	var total int64
+	if err := base.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	query := base.Session(&gorm.Session{}).Order("created_at DESC")
+	if filter.Limit > 0 {
+		query = query.Limit(filter.Limit)
+		if filter.Page > 1 {
+			query = query.Offset((filter.Page - 1) * filter.Limit)
+		}
+	}
+
+	var models []scanModel
+	if err := query.Find(&models).Error; err != nil {
+		return nil, 0, err
+	}
+
+	out := make([]domain.Scan, 0, len(models))
+	for _, model := range models {
+		scan, err := toDomainScan(model)
+		if err != nil {
+			continue
+		}
+		out = append(out, scan)
+	}
+
+	return out, total, nil
+}
+
+// DistinctTargets returns the distinct, non-empty target values across the user's
+// scans, sorted ascending.
+func (r *ScanRepositoryPostgres) DistinctTargets(ctx context.Context, userID string) ([]string, error) {
+	userID = strings.TrimSpace(userID)
+
+	query := r.db.DB.WithContext(ctx).Model(&scanModel{}).
+		Distinct("target").
+		Where("target IS NOT NULL AND target != ''").
+		Order("target ASC")
+	if userID != "" {
+		query = query.Where("user_id = ?", userID)
+	}
+
+	var targets []string
+	if err := query.Pluck("target", &targets).Error; err != nil {
+		return nil, err
+	}
+
+	return targets, nil
+}
+
 func (r *ScanRepositoryPostgres) FindRunningByUserID(ctx context.Context, userID string) (domain.Scan, bool, error) {
 	userID = strings.TrimSpace(userID)
 	if userID == "" {

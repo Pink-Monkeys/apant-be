@@ -31,6 +31,65 @@ func TestFindRunningByUserID(t *testing.T) {
 	}
 }
 
+func TestFindByUserIDFiltered(t *testing.T) {
+	ctx := context.Background()
+	repo := NewMemoryScanRepository()
+
+	now := time.Now()
+	_ = repo.Save(ctx, domain.Scan{ID: "a", UserID: "u1", Target: "http://x", CreatedAt: now.Add(-72 * time.Hour)})
+	_ = repo.Save(ctx, domain.Scan{ID: "b", UserID: "u1", Target: "http://y", CreatedAt: now.Add(-1 * time.Hour)})
+	_ = repo.Save(ctx, domain.Scan{ID: "c", UserID: "u1", Target: "http://x", CreatedAt: now})
+	_ = repo.Save(ctx, domain.Scan{ID: "d", UserID: "u2", Target: "http://x", CreatedAt: now}) // other user
+
+	// User scope + target filter: u1 scans on http://x -> a, c (newest first).
+	got, total, err := repo.FindByUserIDFiltered(ctx, "u1", domain.ScanFilter{Target: "http://x"})
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if total != 2 || len(got) != 2 || got[0].ID != "c" || got[1].ID != "a" {
+		t.Fatalf("target filter wrong: total=%d ids=%v", total, ids(got))
+	}
+
+	// Time range: only scans in the last 24h -> b, c.
+	got, total, _ = repo.FindByUserIDFiltered(ctx, "u1", domain.ScanFilter{From: now.Add(-24 * time.Hour)})
+	if total != 2 || len(got) != 2 {
+		t.Fatalf("time filter wrong: total=%d ids=%v", total, ids(got))
+	}
+
+	// Pagination: limit 1, page 2 of u1's 3 scans -> the 2nd newest (b).
+	got, total, _ = repo.FindByUserIDFiltered(ctx, "u1", domain.ScanFilter{Page: 2, Limit: 1})
+	if total != 3 || len(got) != 1 || got[0].ID != "b" {
+		t.Fatalf("pagination wrong: total=%d ids=%v", total, ids(got))
+	}
+}
+
+func TestDistinctScanTargets(t *testing.T) {
+	ctx := context.Background()
+	repo := NewMemoryScanRepository()
+
+	_ = repo.Save(ctx, domain.Scan{ID: "a", UserID: "u1", Target: "http://y"})
+	_ = repo.Save(ctx, domain.Scan{ID: "b", UserID: "u1", Target: "http://x"})
+	_ = repo.Save(ctx, domain.Scan{ID: "c", UserID: "u1", Target: "http://x"}) // dup
+	_ = repo.Save(ctx, domain.Scan{ID: "d", UserID: "u1", Target: ""})         // empty skipped
+	_ = repo.Save(ctx, domain.Scan{ID: "e", UserID: "u2", Target: "http://z"}) // other user
+
+	targets, err := repo.DistinctTargets(ctx, "u1")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if len(targets) != 2 || targets[0] != "http://x" || targets[1] != "http://y" {
+		t.Fatalf("distinct targets wrong (want sorted [x y]): %v", targets)
+	}
+}
+
+func ids(scans []domain.Scan) []string {
+	out := make([]string, len(scans))
+	for i, s := range scans {
+		out[i] = s.ID
+	}
+	return out
+}
+
 func TestFailStaleRunning(t *testing.T) {
 	ctx := context.Background()
 	repo := NewMemoryScanRepository()
