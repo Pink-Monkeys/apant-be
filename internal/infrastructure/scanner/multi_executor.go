@@ -260,6 +260,16 @@ func (e *MultiExecutor) executeHTTPRequest(intent *domain.ToolIntent) map[string
 		}
 	}
 
+	// Capture every Set-Cookie as a name=value pair. The header map above keeps
+	// only the first value per header, which silently drops the extra cookies a
+	// login response commonly sets (session + CSRF + flags). resp.Cookies() parses
+	// them all, and the values are already decoded — callers must join them as-is
+	// (never re-encode) when rebuilding a Cookie header.
+	setCookies := make([]string, 0, len(resp.Cookies()))
+	for _, c := range resp.Cookies() {
+		setCookies = append(setCookies, c.Name+"="+c.Value)
+	}
+
 	successIndicators := []string{
 		"Congratulations",
 		"congratulations",
@@ -301,6 +311,7 @@ func (e *MultiExecutor) executeHTTPRequest(intent *domain.ToolIntent) map[string
 		"method":           method,
 		"status_code":      resp.StatusCode,
 		"response_headers": respHeaders,
+		"set_cookies":      setCookies,
 		"body_preview":     bodyPreview,
 		"body_length":      len(respBodyStr),
 		"exploit_success":  exploitSuccess,
