@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"apant_be/internal/domain"
 )
@@ -20,7 +19,7 @@ func NewClaudeProvider(apiKey, model string) *ClaudeProvider {
 	return &ClaudeProvider{
 		apiKey: apiKey,
 		model:  model,
-		client: &http.Client{Timeout: 60 * time.Second},
+		client: &http.Client{Timeout: providerHTTPTimeout()},
 	}
 }
 
@@ -52,6 +51,11 @@ type claudeResponse struct {
 		Type string `json:"type"`
 		Text string `json:"text"`
 	} `json:"content"`
+	// Anthropic reports input/output tokens (no total — derived downstream).
+	Usage struct {
+		InputTokens  int `json:"input_tokens"`
+		OutputTokens int `json:"output_tokens"`
+	} `json:"usage"`
 }
 
 func (p *ClaudeProvider) Generate(ctx context.Context, in domain.AIGenerateInput) (domain.AIGenerateOutput, error) {
@@ -109,5 +113,11 @@ func (p *ClaudeProvider) Generate(ctx context.Context, in domain.AIGenerateInput
 		}
 	}
 
-	return domain.AIGenerateOutput{Model: out.Model, Text: text, RawID: out.ID}, nil
+	return domain.AIGenerateOutput{
+		Model:        out.Model,
+		Text:         text,
+		RawID:        out.ID,
+		InputTokens:  out.Usage.InputTokens,
+		OutputTokens: out.Usage.OutputTokens,
+	}, nil
 }

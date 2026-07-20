@@ -19,6 +19,13 @@ type AIGenerateOutput struct {
 	Model string
 	Text  string
 	RawID string
+	// Token usage as reported by the provider (all 0 when the provider does not
+	// report a `usage` object). InputTokens/OutputTokens are the prompt/completion
+	// split; TotalTokens is the provider's own total when present, else 0 (callers
+	// treat 0 as "derive from Input+Output").
+	InputTokens  int
+	OutputTokens int
+	TotalTokens  int
 }
 
 // AIGateway abstracts provider-specific AI integration.
