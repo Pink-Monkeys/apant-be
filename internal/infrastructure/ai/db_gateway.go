@@ -72,7 +72,14 @@ func (g *DBGateway) Generate(ctx context.Context, provider string, in domain.AIG
 	if err != nil {
 		return domain.AIGenerateOutput{}, err
 	}
-	return adapter.Generate(ctx, in)
+	out, err := adapter.Generate(ctx, in)
+	// Fold this call's token usage into the per-scan tally when one is installed
+	// on the context (see domain.ContextWithTokenTally). Single chokepoint for
+	// every caller of Generate; a no-op when no tally is present.
+	if err == nil {
+		domain.TokenTallyFromContext(ctx).Add(out.InputTokens, out.OutputTokens, out.TotalTokens)
+	}
+	return out, err
 }
 
 // Validate checks a (provider, model) selection without building an adapter or

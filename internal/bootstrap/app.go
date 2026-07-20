@@ -116,6 +116,7 @@ func BuildApp(cfg config.Config) (*fiber.App, string, error) {
 		MaxFiles:      cfg.StaticMaxFiles,
 		MaxTotalBytes: cfg.StaticMaxTotalBytes,
 	})
+	pentestService.ConfigureScanTimeout(time.Duration(cfg.ScanMaxMinutes) * time.Minute)
 	// Recover scans left "running" by a previous crash/restart so users are not
 	// blocked by a phantom in-flight scan.
 	pentestService.RecoverStaleScans(context.Background())

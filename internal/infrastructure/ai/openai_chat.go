@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 
 	"apant_be/internal/domain"
 )
@@ -40,7 +39,7 @@ func NewOpenAIChatProvider(apiKey, model, baseURL string) *OpenAIChatProvider {
 		apiKey:  apiKey,
 		model:   model,
 		baseURL: baseURL,
-		client:  &http.Client{Timeout: 60 * time.Second},
+		client:  &http.Client{Timeout: providerHTTPTimeout()},
 	}
 }
 
@@ -66,6 +65,13 @@ type chatCompletionResponse struct {
 			Content string `json:"content"`
 		} `json:"message"`
 	} `json:"choices"`
+	// Chat Completions reports token usage here (OpenAI, DeepSeek, OpenRouter,
+	// Groq, … all follow this shape). Absent on some local servers → zero values.
+	Usage struct {
+		PromptTokens     int `json:"prompt_tokens"`
+		CompletionTokens int `json:"completion_tokens"`
+		TotalTokens      int `json:"total_tokens"`
+	} `json:"usage"`
 }
 
 func (p *OpenAIChatProvider) Generate(ctx context.Context, in domain.AIGenerateInput) (domain.AIGenerateOutput, error) {
@@ -127,5 +133,12 @@ func (p *OpenAIChatProvider) Generate(ctx context.Context, in domain.AIGenerateI
 			p.baseURL, model, truncate(string(body), 500))
 	}
 
-	return domain.AIGenerateOutput{Model: out.Model, Text: text, RawID: out.ID}, nil
+	return domain.AIGenerateOutput{
+		Model:        out.Model,
+		Text:         text,
+		RawID:        out.ID,
+		InputTokens:  out.Usage.PromptTokens,
+		OutputTokens: out.Usage.CompletionTokens,
+		TotalTokens:  out.Usage.TotalTokens,
+	}, nil
 }

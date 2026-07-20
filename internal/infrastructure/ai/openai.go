@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	"time"
 
 	"apant_be/internal/domain"
 )
@@ -37,7 +36,7 @@ func NewOpenAIProviderWithBaseURL(apiKey, model, baseURL string) *OpenAIProvider
 		apiKey:  apiKey,
 		model:   model,
 		baseURL: baseURL,
-		client:  &http.Client{Timeout: 60 * time.Second},
+		client:  &http.Client{Timeout: providerHTTPTimeout()},
 	}
 }
 
@@ -102,6 +101,13 @@ type openAIResponse struct {
 			Text string `json:"text"`
 		} `json:"content"`
 	} `json:"output"`
+	// Responses API reports token usage as input/output/total (distinct from the
+	// Chat Completions prompt/completion naming).
+	Usage struct {
+		InputTokens  int `json:"input_tokens"`
+		OutputTokens int `json:"output_tokens"`
+		TotalTokens  int `json:"total_tokens"`
+	} `json:"usage"`
 }
 
 func (p *OpenAIProvider) Generate(ctx context.Context, in domain.AIGenerateInput) (domain.AIGenerateOutput, error) {
@@ -177,5 +183,12 @@ func (p *OpenAIProvider) Generate(ctx context.Context, in domain.AIGenerateInput
 		}
 	}
 
-	return domain.AIGenerateOutput{Model: out.Model, Text: text, RawID: out.ID}, nil
+	return domain.AIGenerateOutput{
+		Model:        out.Model,
+		Text:         text,
+		RawID:        out.ID,
+		InputTokens:  out.Usage.InputTokens,
+		OutputTokens: out.Usage.OutputTokens,
+		TotalTokens:  out.Usage.TotalTokens,
+	}, nil
 }
