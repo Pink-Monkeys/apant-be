@@ -10,6 +10,7 @@ func NewRegistry() *ToolRegistry {
 	return &ToolRegistry{
 		tools: []domain.ToolInfo{
 			{Name: "nmap_scan", Description: "Port scanning and service detection", Enabled: true},
+			{Name: "wafw00f_detect", Description: "Fingerprint the Web Application Firewall (WAF) fronting the target (advisory, not a vulnerability)", Enabled: true},
 			{Name: "httpx_probe", Description: "HTTP probing, status code, title, and technology detection", Enabled: true},
 			{Name: "subfinder_enum", Description: "Passive subdomain enumeration", Enabled: true},
 			{Name: "katana_crawl", Description: "Web crawler for URL discovery", Enabled: true},

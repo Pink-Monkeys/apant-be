@@ -62,6 +62,9 @@ RUN apt-get update && \
     && python3 -m venv /opt/semgrep-venv \
     && /opt/semgrep-venv/bin/pip install --no-cache-dir --retries 10 --timeout 300 semgrep \
     && ln -s /opt/semgrep-venv/bin/semgrep /usr/local/bin/semgrep \
+    && python3 -m venv /opt/wafw00f-venv \
+    && /opt/wafw00f-venv/bin/pip install --no-cache-dir --retries 10 --timeout 300 wafw00f \
+    && ln -s /opt/wafw00f-venv/bin/wafw00f /usr/local/bin/wafw00f \
     && git clone --depth 1 https://github.com/semgrep/semgrep-rules.git /opt/semgrep-rules \
     && rm -rf /opt/semgrep-rules/.git \
     && git clone --depth 1 https://github.com/sqlmapproject/sqlmap.git /opt/sqlmap \

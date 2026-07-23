@@ -30,6 +30,7 @@ func NewToolPolicy() *ToolPolicy {
 	return &ToolPolicy{
 		allowedTools: map[string]bool{
 			"nmap_scan":          true,
+			"wafw00f_detect":     true,
 			"httpx_probe":        true,
 			"subfinder_enum":     true,
 			"katana_crawl":       true,
