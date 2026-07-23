@@ -69,8 +69,11 @@ func main() {
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      360 * time.Second,
-		IdleTimeout:       60 * time.Second,
+		// Must exceed the longest per-tool exec ceiling so a long-running tool's
+		// response is flushed rather than cut mid-write. The WordPress/CMS nuclei
+		// path (-tags) raises its exec ceiling to 600s, so this stays above that.
+		WriteTimeout: 660 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
 	log.Printf("scanner service listening on :%s", port)
