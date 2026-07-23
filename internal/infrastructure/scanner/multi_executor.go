@@ -91,6 +91,8 @@ func (e *MultiExecutor) Execute(intent *domain.ToolIntent) map[string]any {
 	switch name {
 	case "nmap_scan":
 		return e.executeNmap(intent)
+	case "wafw00f_detect":
+		return e.executeGeneric("wafw00f", intent, e.buildWafw00fArgs)
 	case "httpx_probe":
 		return e.executeGeneric("httpx", intent, e.buildHttpxArgs)
 	case "subfinder_enum":
@@ -417,6 +419,22 @@ func appendAuthAsHeaders(args []string, headerFlag string, params map[string]any
 		args = append(args, headerFlag, "Cookie: "+cookie)
 	}
 	return args
+}
+
+// buildWafw00fArgs fingerprints the WAF in front of the target. This is advisory
+// recon (no auth is forwarded — WAF detection happens at the edge). -a runs every
+// signature instead of stopping at the first match, for a more complete verdict;
+// "-f json -o -" writes structured JSON to stdout so the transcript stays compact
+// and parseable. On builds whose wafw00f rejects "-o -", executeGeneric still reads
+// the default text verdict from stdout, so the agent is not left blind.
+func (e *MultiExecutor) buildWafw00fArgs(intent *domain.ToolIntent) ([]string, error) {
+	target, _ := intent.Params["target"].(string)
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return nil, fmt.Errorf("wafw00f_detect requires target")
+	}
+
+	return []string{target, "-a", "-f", "json", "-o", "-"}, nil
 }
 
 func (e *MultiExecutor) buildHttpxArgs(intent *domain.ToolIntent) ([]string, error) {
