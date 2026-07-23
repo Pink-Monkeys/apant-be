@@ -171,6 +171,19 @@ func validateNucleiParams(params map[string]any) error {
 		}
 	}
 
+	// Only a curated set of nuclei tags is permitted. The agent is an LLM, so an
+	// unconstrained tag (e.g. "cve") would execute thousands of templates; restrict
+	// it to the CMS tag(s) we have validated. keep in sync with buildNucleiArgs.
+	if tags, ok := params["tags"].(string); ok && strings.TrimSpace(tags) != "" {
+		allowedTags := map[string]bool{"wordpress": true}
+		for _, t := range strings.Split(tags, ",") {
+			t = strings.TrimSpace(strings.ToLower(t))
+			if t != "" && !allowedTags[t] {
+				return fmt.Errorf("tag not allowed: %s", t)
+			}
+		}
+	}
+
 	return nil
 }
 

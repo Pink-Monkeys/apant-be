@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os/exec"
@@ -106,7 +107,7 @@ func (e *MultiExecutor) Execute(intent *domain.ToolIntent) map[string]any {
 	case "ffuf_fuzz":
 		return e.executeGeneric("ffuf", intent, e.buildFfufArgs)
 	case "nuclei_scan":
-		return e.executeGeneric("nuclei", intent, e.buildNucleiArgs)
+		return e.executeNuclei(intent)
 	case "dalfox_xss":
 		return e.executeGeneric("dalfox", intent, e.buildDalfoxArgs)
 	case "sqlmap_scan":
@@ -145,12 +146,26 @@ func (e *MultiExecutor) executeGeneric(
 	intent *domain.ToolIntent,
 	buildArgs func(*domain.ToolIntent) ([]string, error),
 ) map[string]any {
+	return e.executeGenericWithTimeout(toolName, intent, buildArgs, e.timeout)
+}
+
+func (e *MultiExecutor) executeGenericWithTimeout(
+	toolName string,
+	intent *domain.ToolIntent,
+	buildArgs func(*domain.ToolIntent) ([]string, error),
+	timeout time.Duration,
+) map[string]any {
 	args, err := buildArgs(intent)
 	if err != nil {
 		return map[string]any{"status": "error", "tool": toolName, "error": err.Error()}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+	// Emit the actual per-call exec ceiling so it is observable (e.g. Step 4 can
+	// confirm a WordPress -tags run uses 600s while every other tool stays at the
+	// default 300s) without having to wait out a real timeout to measure it.
+	log.Printf("scanner exec tool=%s timeout=%ds", toolName, int(timeout.Seconds()))
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, toolName, args...)
@@ -167,7 +182,7 @@ func (e *MultiExecutor) executeGeneric(
 			"status":          "error",
 			"tool":            toolName,
 			"error":           fmt.Sprintf("%s timed out", toolName),
-			"timeout_seconds": int(e.timeout.Seconds()),
+			"timeout_seconds": int(timeout.Seconds()),
 		}
 	}
 
@@ -561,6 +576,32 @@ func (e *MultiExecutor) buildFfufArgs(intent *domain.ToolIntent) ([]string, erro
 	return args, nil
 }
 
+// wpNucleiTimeout is the exec ceiling for WordPress/CMS nuclei runs (-tags). Those
+// execute far more templates than the curated default run; Step 0 measured 245s on a
+// LAN target and showed HTTP round-trips — not template count — dominate the time, so
+// real remote targets run longer. A wide margin keeps a slow-but-legitimate scan from
+// tripping the executor timeout and surfacing a killed run as a misleading "zero
+// findings". Ordering is kept consistent across layers: exec(600) < scanner
+// WriteTimeout(660) < api client SCANNER_TIMEOUT_SECONDS(720).
+const wpNucleiTimeout = 600 * time.Second
+
+// executeNuclei runs nuclei, widening the exec timeout for WordPress/CMS -tags runs
+// (which execute far more templates) while leaving every other nuclei run on the
+// default per-tool timeout.
+func (e *MultiExecutor) executeNuclei(intent *domain.ToolIntent) map[string]any {
+	return e.executeGenericWithTimeout("nuclei", intent, e.buildNucleiArgs, nucleiTimeout(e.timeout, intent.Params))
+}
+
+// nucleiTimeout widens the exec ceiling to wpNucleiTimeout for CMS -tags runs, and
+// otherwise leaves the base per-tool timeout untouched. A base already wider than the
+// WP ceiling is preserved.
+func nucleiTimeout(base time.Duration, params map[string]any) time.Duration {
+	if tags, _ := params["tags"].(string); strings.TrimSpace(tags) != "" && base < wpNucleiTimeout {
+		return wpNucleiTimeout
+	}
+	return base
+}
+
 func (e *MultiExecutor) buildNucleiArgs(intent *domain.ToolIntent) ([]string, error) {
 	target, _ := intent.Params["target"].(string)
 	target = strings.TrimSpace(target)
@@ -575,7 +616,23 @@ func (e *MultiExecutor) buildNucleiArgs(intent *domain.ToolIntent) ([]string, er
 	// the agent's context for no benefit (we only need id/severity/matched-at).
 	args := []string{"-u", target, "-silent", "-jsonl", "-omit-raw"}
 
-	if tp, ok := intent.Params["templates"].(string); ok && strings.TrimSpace(tp) != "" {
+	if tags, ok := intent.Params["tags"].(string); ok && strings.TrimSpace(tags) != "" {
+		// CMS-focused run (e.g. tags=wordpress): filter by tag only, with NO -t path
+		// restriction. Step 0 validated this shape empirically — on a vulnerable
+		// WordPress it returned 16 findings in 245s and caught a real version-matched
+		// CVE (CVE-2020-11738), beating the alternative of scoping -t to cves/ (slower,
+		// lower coverage). -tags constrains EXECUTION to the tagged templates: the full
+		// tree is loaded but only the wordpress-tagged templates run, so this does NOT
+		// reproduce the legacy whole-tree behaviour. (That old "whole-tree returns zero"
+		// note most likely described a run that exceeded the executor timeout and only
+		// appeared as zero — not nuclei genuinely finding nothing. This tag path is
+		// time-bounded by wpNucleiTimeout so a slow run fails as a timeout, not a
+		// silent zero.) The tag is validated against an allowlist in policy.go, and -t
+		// is deliberately internal here (never taken from the agent) so no arbitrary
+		// path can be scanned.
+		// keep in sync with validateNucleiParams allowlist
+		args = append(args, "-tags", strings.TrimSpace(tags))
+	} else if tp, ok := intent.Params["templates"].(string); ok && strings.TrimSpace(tp) != "" {
 		// Honor an explicit, in-bounds template path from the agent.
 		tp = strings.TrimSpace(tp)
 		if strings.HasPrefix(tp, e.nucleiTemplates) {
