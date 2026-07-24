@@ -35,7 +35,12 @@ type AIGateway interface {
 	// scan does any expensive work: the provider must exist, be enabled, and have
 	// a key; a non-empty model must exist and be enabled for that provider. It
 	// returns a user-facing error (via shared/errors) when the selection is bad.
-	Validate(ctx context.Context, provider, model string) error
+	//
+	// On success it also returns the model's frozen price snapshot — the price in
+	// effect at this moment — so the caller can store it on the scan record before
+	// any work runs. The snapshot is unpriced (see FrozenPrice.Priced) when the
+	// model has no price configured or when model is empty.
+	Validate(ctx context.Context, provider, model string) (FrozenPrice, error)
 }
 
 type ToolIntent struct {

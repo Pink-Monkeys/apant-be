@@ -190,12 +190,19 @@ func (s *Service) AddModel(ctx context.Context, providerID string, req AddModelR
 	if req.Enabled != nil {
 		enabled = *req.Enabled
 	}
+	in, out, currency, err := resolvePriceInput(req.PriceInPer1M, req.PriceOutPer1M, req.Currency)
+	if err != nil {
+		return ProviderResponse{}, err
+	}
 	m := domain.LLMModel{
-		ID:         uuid.NewString(),
-		ProviderID: providerID,
-		ModelID:    modelID,
-		Label:      strings.TrimSpace(req.Label),
-		Enabled:    enabled,
+		ID:            uuid.NewString(),
+		ProviderID:    providerID,
+		ModelID:       modelID,
+		Label:         strings.TrimSpace(req.Label),
+		Enabled:       enabled,
+		PriceInPer1M:  in,
+		PriceOutPer1M: out,
+		Currency:      currency,
 	}
 	if err := s.repo.AddModel(ctx, m); err != nil {
 		return ProviderResponse{}, appErrors.Wrap(http.StatusInternalServerError, "failed to add model", err)
@@ -235,6 +242,20 @@ func (s *Service) UpdateModel(ctx context.Context, providerID, modelID string, r
 	}
 	if req.Enabled != nil {
 		target.Enabled = *req.Enabled
+	}
+	// Price patch: clear takes precedence; otherwise set only when supplied.
+	if req.ClearPrice != nil && *req.ClearPrice {
+		target.PriceInPer1M, target.PriceOutPer1M, target.Currency = nil, nil, nil
+	} else if req.PriceInPer1M != nil || req.PriceOutPer1M != nil {
+		in, out, currency, perr := resolvePriceInput(req.PriceInPer1M, req.PriceOutPer1M, req.Currency)
+		if perr != nil {
+			return ProviderResponse{}, perr
+		}
+		target.PriceInPer1M, target.PriceOutPer1M = in, out
+		// Preserve the existing currency when the patch omits it but keeps a price.
+		if currency != nil {
+			target.Currency = currency
+		}
 	}
 	if err := s.repo.UpdateModel(ctx, target); err != nil {
 		return ProviderResponse{}, appErrors.Wrap(http.StatusInternalServerError, "failed to update model", err)
@@ -424,13 +445,40 @@ func (s *Service) toProviderResponse(p domain.LLMProvider) ProviderResponse {
 	}
 	for _, m := range p.Models {
 		resp.Models = append(resp.Models, ModelResponse{
-			ID:      m.ID,
-			ModelID: m.ModelID,
-			Label:   m.Label,
-			Enabled: m.Enabled,
+			ID:            m.ID,
+			ModelID:       m.ModelID,
+			Label:         m.Label,
+			Enabled:       m.Enabled,
+			PriceInPer1M:  m.PriceInPer1M,
+			PriceOutPer1M: m.PriceOutPer1M,
+			Currency:      m.Currency,
 		})
 	}
 	return resp
+}
+
+// resolvePriceInput validates and normalizes a price pair from a request. Both
+// prices must be supplied together (or neither): a half-set price cannot compute
+// a cost. Returns (nil, nil, nil, nil) when neither is supplied (unpriced). A
+// price of 0 is valid (free model); negatives are rejected. Currency defaults to
+// "USD" when a price is set but currency is blank.
+func resolvePriceInput(in, out *float64, currency *string) (*float64, *float64, *string, error) {
+	switch {
+	case in == nil && out == nil:
+		return nil, nil, nil, nil
+	case in == nil || out == nil:
+		return nil, nil, nil, appErrors.New(http.StatusBadRequest,
+			"price_in_per_1m and price_out_per_1m must be provided together")
+	}
+	if *in < 0 || *out < 0 {
+		return nil, nil, nil, appErrors.New(http.StatusBadRequest, "prices must not be negative")
+	}
+	cur := "USD"
+	if currency != nil && strings.TrimSpace(*currency) != "" {
+		cur = strings.TrimSpace(*currency)
+	}
+	inVal, outVal := *in, *out
+	return &inVal, &outVal, &cur, nil
 }
 
 func last4(s string) string {

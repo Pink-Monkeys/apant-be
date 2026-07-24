@@ -26,13 +26,18 @@ type llmProviderModel struct {
 func (llmProviderModel) TableName() string { return "llm_providers" }
 
 type llmModelModel struct {
-	ID         string    `gorm:"column:id;type:text;primaryKey"`
-	ProviderID string    `gorm:"column:provider_id;type:text;index;not null"`
-	ModelID    string    `gorm:"column:model_id;type:text;not null"`
-	Label      string    `gorm:"column:label;type:text"`
-	Enabled    bool      `gorm:"column:enabled;not null;default:true"`
-	CreatedAt  time.Time `gorm:"column:created_at;not null"`
-	UpdatedAt  time.Time `gorm:"column:updated_at;not null"`
+	ID         string `gorm:"column:id;type:text;primaryKey"`
+	ProviderID string `gorm:"column:provider_id;type:text;index;not null"`
+	ModelID    string `gorm:"column:model_id;type:text;not null"`
+	Label      string `gorm:"column:label;type:text"`
+	Enabled    bool   `gorm:"column:enabled;not null;default:true"`
+	// Per-1M-token prices. Nullable so "unpriced" (NULL) stays distinct from
+	// "free" (0). Pointers map NULL<->nil without a float64 zero-value collision.
+	PriceInPer1M  *float64  `gorm:"column:price_in_per_1m;type:numeric"`
+	PriceOutPer1M *float64  `gorm:"column:price_out_per_1m;type:numeric"`
+	Currency      *string   `gorm:"column:currency;type:text"`
+	CreatedAt     time.Time `gorm:"column:created_at;not null"`
+	UpdatedAt     time.Time `gorm:"column:updated_at;not null"`
 }
 
 func (llmModelModel) TableName() string { return "llm_models" }
@@ -189,11 +194,17 @@ func (r *LLMRepositoryPostgres) UpdateModel(ctx context.Context, m domain.LLMMod
 	if strings.TrimSpace(m.ID) == "" {
 		return fmt.Errorf("model id is required")
 	}
+	// The service passes the fully-resolved target (price already patched or
+	// cleared), so we set the three price columns from it directly: a nil pointer
+	// writes NULL (unpriced), a non-nil value writes the number (0 => free).
 	updates := map[string]any{
-		"model_id":   strings.TrimSpace(m.ModelID),
-		"label":      strings.TrimSpace(m.Label),
-		"enabled":    m.Enabled,
-		"updated_at": time.Now(),
+		"model_id":         strings.TrimSpace(m.ModelID),
+		"label":            strings.TrimSpace(m.Label),
+		"enabled":          m.Enabled,
+		"price_in_per_1m":  m.PriceInPer1M,
+		"price_out_per_1m": m.PriceOutPer1M,
+		"currency":         m.Currency,
+		"updated_at":       time.Now(),
 	}
 	return r.db.DB.WithContext(ctx).Model(&llmModelModel{}).Where("id = ?", m.ID).Updates(updates).Error
 }
@@ -265,13 +276,16 @@ func fromDomainLLMProvider(p domain.LLMProvider) llmProviderModel {
 
 func toDomainLLMModel(m llmModelModel) domain.LLMModel {
 	return domain.LLMModel{
-		ID:         m.ID,
-		ProviderID: m.ProviderID,
-		ModelID:    m.ModelID,
-		Label:      m.Label,
-		Enabled:    m.Enabled,
-		CreatedAt:  m.CreatedAt,
-		UpdatedAt:  m.UpdatedAt,
+		ID:            m.ID,
+		ProviderID:    m.ProviderID,
+		ModelID:       m.ModelID,
+		Label:         m.Label,
+		Enabled:       m.Enabled,
+		PriceInPer1M:  m.PriceInPer1M,
+		PriceOutPer1M: m.PriceOutPer1M,
+		Currency:      m.Currency,
+		CreatedAt:     m.CreatedAt,
+		UpdatedAt:     m.UpdatedAt,
 	}
 }
 
@@ -284,13 +298,16 @@ func fromDomainLLMModel(m domain.LLMModel) llmModelModel {
 		m.UpdatedAt = now
 	}
 	return llmModelModel{
-		ID:         m.ID,
-		ProviderID: m.ProviderID,
-		ModelID:    strings.TrimSpace(m.ModelID),
-		Label:      strings.TrimSpace(m.Label),
-		Enabled:    m.Enabled,
-		CreatedAt:  m.CreatedAt,
-		UpdatedAt:  m.UpdatedAt,
+		ID:            m.ID,
+		ProviderID:    m.ProviderID,
+		ModelID:       strings.TrimSpace(m.ModelID),
+		Label:         strings.TrimSpace(m.Label),
+		Enabled:       m.Enabled,
+		PriceInPer1M:  m.PriceInPer1M,
+		PriceOutPer1M: m.PriceOutPer1M,
+		Currency:      m.Currency,
+		CreatedAt:     m.CreatedAt,
+		UpdatedAt:     m.UpdatedAt,
 	}
 }
 

@@ -103,11 +103,15 @@ func TestDBGatewayCaseInsensitiveAndCaches(t *testing.T) {
 }
 
 func TestDBGatewayValidate(t *testing.T) {
+	priceIn, priceOut := 3.0, 15.0
 	base := domain.LLMProvider{
 		Name: "OpenAI", AdapterType: domain.AdapterOpenAICompatible,
 		APIKeyEnc: []byte("secret"), Enabled: true,
 		Models: []domain.LLMModel{
-			{ModelID: "gpt-5.4", Enabled: true},
+			// Priced model: Validate must freeze this price.
+			{ModelID: "gpt-5.4", Enabled: true, PriceInPer1M: &priceIn, PriceOutPer1M: &priceOut},
+			// Enabled but no price configured: Validate must return an unpriced snapshot.
+			{ModelID: "gpt-noprice", Enabled: true},
 			{ModelID: "gpt-old", Enabled: false},
 		},
 	}
@@ -117,46 +121,67 @@ func TestDBGatewayValidate(t *testing.T) {
 	}
 
 	t.Run("empty provider", func(t *testing.T) {
-		if err := newGW(base, true).Validate(context.Background(), "", "gpt-5.4"); err == nil {
+		if _, err := newGW(base, true).Validate(context.Background(), "", "gpt-5.4"); err == nil {
 			t.Fatal("expected error for empty provider")
 		}
 	})
 	t.Run("unknown provider", func(t *testing.T) {
-		if err := newGW(base, false).Validate(context.Background(), "nope", ""); err == nil {
+		if _, err := newGW(base, false).Validate(context.Background(), "nope", ""); err == nil {
 			t.Fatal("expected error for unknown provider")
 		}
 	})
 	t.Run("disabled provider", func(t *testing.T) {
 		p := base
 		p.Enabled = false
-		if err := newGW(p, true).Validate(context.Background(), "openai", ""); err == nil {
+		if _, err := newGW(p, true).Validate(context.Background(), "openai", ""); err == nil {
 			t.Fatal("expected error for disabled provider")
 		}
 	})
 	t.Run("no key", func(t *testing.T) {
 		p := base
 		p.APIKeyEnc = nil
-		if err := newGW(p, true).Validate(context.Background(), "openai", ""); err == nil {
+		if _, err := newGW(p, true).Validate(context.Background(), "openai", ""); err == nil {
 			t.Fatal("expected error for provider without key")
 		}
 	})
-	t.Run("empty model ok", func(t *testing.T) {
-		if err := newGW(base, true).Validate(context.Background(), "openai", ""); err != nil {
+	t.Run("empty model ok and unpriced", func(t *testing.T) {
+		price, err := newGW(base, true).Validate(context.Background(), "openai", "")
+		if err != nil {
 			t.Fatalf("empty model should be allowed: %v", err)
 		}
+		if price.Priced() {
+			t.Error("no model pinned => unpriced snapshot")
+		}
 	})
-	t.Run("enabled model ok", func(t *testing.T) {
-		if err := newGW(base, true).Validate(context.Background(), "OpenAI", "gpt-5.4"); err != nil {
+	t.Run("enabled model freezes price", func(t *testing.T) {
+		price, err := newGW(base, true).Validate(context.Background(), "OpenAI", "gpt-5.4")
+		if err != nil {
 			t.Fatalf("enabled model should pass: %v", err)
+		}
+		cost, ok := price.Cost(1_000_000, 1_000_000)
+		if !ok {
+			t.Fatal("priced model must return a usable price snapshot")
+		}
+		if cost != priceIn+priceOut {
+			t.Errorf("frozen cost = %v, want %v", cost, priceIn+priceOut)
+		}
+	})
+	t.Run("enabled model without price is unpriced", func(t *testing.T) {
+		price, err := newGW(base, true).Validate(context.Background(), "openai", "gpt-noprice")
+		if err != nil {
+			t.Fatalf("priceless model should still validate: %v", err)
+		}
+		if price.Priced() {
+			t.Error("model without configured price must be unpriced, not priced-zero")
 		}
 	})
 	t.Run("disabled model rejected", func(t *testing.T) {
-		if err := newGW(base, true).Validate(context.Background(), "openai", "gpt-old"); err == nil {
+		if _, err := newGW(base, true).Validate(context.Background(), "openai", "gpt-old"); err == nil {
 			t.Fatal("expected error for disabled model")
 		}
 	})
 	t.Run("unknown model rejected", func(t *testing.T) {
-		if err := newGW(base, true).Validate(context.Background(), "openai", "gpt-nonexistent"); err == nil {
+		if _, err := newGW(base, true).Validate(context.Background(), "openai", "gpt-nonexistent"); err == nil {
 			t.Fatal("expected error for unknown model")
 		}
 	})

@@ -14,24 +14,33 @@ import (
 )
 
 type scanModel struct {
-	ID          string    `gorm:"column:id;type:text;primaryKey"`
-	SessionID   string    `gorm:"column:session_id;type:text;index"`
-	UserID      string    `gorm:"column:user_id;type:text;index"`
-	Username    string    `gorm:"column:username;type:text"`
-	Target      string    `gorm:"column:target;type:text"`
-	Provider    string    `gorm:"column:provider;type:text"`
-	Model       string    `gorm:"column:model;type:text"`
-	Message     string    `gorm:"column:message;type:text"`
-	Description string    `gorm:"column:description;type:text"`
-	ScanType    string    `gorm:"column:scan_type;type:text"`
-	Status      string    `gorm:"column:status;type:text"`
-	Steps       []byte    `gorm:"column:steps;type:jsonb"`
-	FinalAnswer string    `gorm:"column:final_answer;type:text"`
-	Error       string    `gorm:"column:error;type:text"`
-	Duration    string    `gorm:"column:duration;type:text"`
-	TargetInfo  []byte    `gorm:"column:target_info;type:jsonb"`
-	CreatedAt   time.Time `gorm:"column:created_at;not null"`
-	UpdatedAt   time.Time `gorm:"column:updated_at"`
+	ID           string `gorm:"column:id;type:text;primaryKey"`
+	SessionID    string `gorm:"column:session_id;type:text;index"`
+	UserID       string `gorm:"column:user_id;type:text;index"`
+	Username     string `gorm:"column:username;type:text"`
+	Target       string `gorm:"column:target;type:text"`
+	Provider     string `gorm:"column:provider;type:text"`
+	Model        string `gorm:"column:model;type:text"`
+	Message      string `gorm:"column:message;type:text"`
+	Description  string `gorm:"column:description;type:text"`
+	ScanType     string `gorm:"column:scan_type;type:text"`
+	Status       string `gorm:"column:status;type:text"`
+	Steps        []byte `gorm:"column:steps;type:jsonb"`
+	FinalAnswer  string `gorm:"column:final_answer;type:text"`
+	Error        string `gorm:"column:error;type:text"`
+	InputTokens  int    `gorm:"column:input_tokens;type:bigint;not null;default:0"`
+	OutputTokens int    `gorm:"column:output_tokens;type:bigint;not null;default:0"`
+	TotalTokens  int    `gorm:"column:total_tokens;type:bigint;not null;default:0"`
+	Calls        int    `gorm:"column:calls;type:bigint;not null;default:0"`
+	// Frozen price snapshot: nullable so "unpriced" (NULL) stays distinct from
+	// "free" (0). Pointers map NULL<->nil without the float64 zero-value collision.
+	PriceInPer1M  *float64  `gorm:"column:price_in_per_1m;type:numeric"`
+	PriceOutPer1M *float64  `gorm:"column:price_out_per_1m;type:numeric"`
+	PriceCurrency *string   `gorm:"column:price_currency;type:text"`
+	Duration      string    `gorm:"column:duration;type:text"`
+	TargetInfo    []byte    `gorm:"column:target_info;type:jsonb"`
+	CreatedAt     time.Time `gorm:"column:created_at;not null"`
+	UpdatedAt     time.Time `gorm:"column:updated_at"`
 }
 
 func (scanModel) TableName() string {
@@ -69,24 +78,31 @@ func (r *ScanRepositoryPostgres) Save(ctx context.Context, scan domain.Scan) err
 	}
 
 	model := scanModel{
-		ID:          scan.ID,
-		SessionID:   strings.TrimSpace(scan.SessionID),
-		UserID:      strings.TrimSpace(scan.UserID),
-		Username:    strings.TrimSpace(scan.Username),
-		Target:      scan.Target,
-		Provider:    scan.Provider,
-		Model:       scan.Model,
-		Message:     scan.Message,
-		Description: scan.Description,
-		ScanType:    scan.ScanType,
-		Status:      scan.Status,
-		Steps:       steps,
-		FinalAnswer: scan.FinalAnswer,
-		Error:       scan.Error,
-		Duration:    scan.Duration,
-		TargetInfo:  targetInfo,
-		CreatedAt:   scan.CreatedAt,
-		UpdatedAt:   scan.UpdatedAt,
+		ID:            scan.ID,
+		SessionID:     strings.TrimSpace(scan.SessionID),
+		UserID:        strings.TrimSpace(scan.UserID),
+		Username:      strings.TrimSpace(scan.Username),
+		Target:        scan.Target,
+		Provider:      scan.Provider,
+		Model:         scan.Model,
+		Message:       scan.Message,
+		Description:   scan.Description,
+		ScanType:      scan.ScanType,
+		Status:        scan.Status,
+		Steps:         steps,
+		FinalAnswer:   scan.FinalAnswer,
+		Error:         scan.Error,
+		InputTokens:   scan.InputTokens,
+		OutputTokens:  scan.OutputTokens,
+		TotalTokens:   scan.TotalTokens,
+		Calls:         scan.Calls,
+		PriceInPer1M:  scan.PriceInPer1M,
+		PriceOutPer1M: scan.PriceOutPer1M,
+		PriceCurrency: scan.PriceCurrency,
+		Duration:      scan.Duration,
+		TargetInfo:    targetInfo,
+		CreatedAt:     scan.CreatedAt,
+		UpdatedAt:     scan.UpdatedAt,
 	}
 
 	// Upsert: a scan is first saved as "running" then re-saved as
@@ -157,24 +173,31 @@ func toDomainScan(model scanModel) (domain.Scan, error) {
 	}
 
 	return domain.Scan{
-		ID:          model.ID,
-		SessionID:   model.SessionID,
-		UserID:      model.UserID,
-		Username:    model.Username,
-		Target:      model.Target,
-		Provider:    model.Provider,
-		Model:       model.Model,
-		Message:     model.Message,
-		Description: model.Description,
-		ScanType:    model.ScanType,
-		Status:      model.Status,
-		Steps:       steps,
-		FinalAnswer: model.FinalAnswer,
-		Error:       model.Error,
-		Duration:    model.Duration,
-		TargetInfo:  targetInfo,
-		CreatedAt:   model.CreatedAt,
-		UpdatedAt:   model.UpdatedAt,
+		ID:            model.ID,
+		SessionID:     model.SessionID,
+		UserID:        model.UserID,
+		Username:      model.Username,
+		Target:        model.Target,
+		Provider:      model.Provider,
+		Model:         model.Model,
+		Message:       model.Message,
+		Description:   model.Description,
+		ScanType:      model.ScanType,
+		Status:        model.Status,
+		Steps:         steps,
+		FinalAnswer:   model.FinalAnswer,
+		Error:         model.Error,
+		InputTokens:   model.InputTokens,
+		OutputTokens:  model.OutputTokens,
+		TotalTokens:   model.TotalTokens,
+		Calls:         model.Calls,
+		PriceInPer1M:  model.PriceInPer1M,
+		PriceOutPer1M: model.PriceOutPer1M,
+		PriceCurrency: model.PriceCurrency,
+		Duration:      model.Duration,
+		TargetInfo:    targetInfo,
+		CreatedAt:     model.CreatedAt,
+		UpdatedAt:     model.UpdatedAt,
 	}, nil
 }
 
