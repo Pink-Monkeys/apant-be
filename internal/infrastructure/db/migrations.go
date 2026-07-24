@@ -326,5 +326,66 @@ func migrations(seed SeedConfig) []*gormigrate.Migration {
 				return tx.Migrator().DropTable(&userLLMPreferenceModel{})
 			},
 		},
+		{
+			ID: "20260723_add_price_to_llm_models",
+			Migrate: func(tx *gorm.DB) error {
+				cols := []struct{ field, column string }{
+					{"PriceInPer1M", "price_in_per_1m"},
+					{"PriceOutPer1M", "price_out_per_1m"},
+					{"Currency", "currency"},
+				}
+				for _, c := range cols {
+					if tx.Migrator().HasColumn(&llmModelModel{}, c.column) {
+						continue
+					}
+					if err := tx.Migrator().AddColumn(&llmModelModel{}, c.field); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				for _, col := range []string{"price_in_per_1m", "price_out_per_1m", "currency"} {
+					if err := tx.Migrator().DropColumn(&llmModelModel{}, col); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
+		{
+			ID: "20260723_add_token_usage_and_price_to_scans",
+			Migrate: func(tx *gorm.DB) error {
+				cols := []struct{ field, column string }{
+					{"InputTokens", "input_tokens"},
+					{"OutputTokens", "output_tokens"},
+					{"TotalTokens", "total_tokens"},
+					{"Calls", "calls"},
+					{"PriceInPer1M", "price_in_per_1m"},
+					{"PriceOutPer1M", "price_out_per_1m"},
+					{"PriceCurrency", "price_currency"},
+				}
+				for _, c := range cols {
+					if tx.Migrator().HasColumn(&scanModel{}, c.column) {
+						continue
+					}
+					if err := tx.Migrator().AddColumn(&scanModel{}, c.field); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				for _, col := range []string{
+					"input_tokens", "output_tokens", "total_tokens", "calls",
+					"price_in_per_1m", "price_out_per_1m", "price_currency",
+				} {
+					if err := tx.Migrator().DropColumn(&scanModel{}, col); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
 	}
 }

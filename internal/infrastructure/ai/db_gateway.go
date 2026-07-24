@@ -85,39 +85,41 @@ func (g *DBGateway) Generate(ctx context.Context, provider string, in domain.AIG
 // Validate checks a (provider, model) selection without building an adapter or
 // calling the provider. Used by scan entry points to fail fast on a bad choice
 // before any expensive work (upload extraction, recon).
-func (g *DBGateway) Validate(ctx context.Context, provider, model string) error {
+func (g *DBGateway) Validate(ctx context.Context, provider, model string) (domain.FrozenPrice, error) {
 	name := strings.TrimSpace(provider)
 	if name == "" {
-		return appErrors.New(http.StatusBadRequest, "provider is required")
+		return domain.FrozenPrice{}, appErrors.New(http.StatusBadRequest, "provider is required")
 	}
 
 	p, found, err := g.repo.GetProviderByName(ctx, name)
 	if err != nil {
-		return appErrors.Wrap(http.StatusInternalServerError, "failed to load provider", err)
+		return domain.FrozenPrice{}, appErrors.Wrap(http.StatusInternalServerError, "failed to load provider", err)
 	}
 	if !found {
-		return appErrors.New(http.StatusBadRequest, fmt.Sprintf("unknown provider: %s", provider))
+		return domain.FrozenPrice{}, appErrors.New(http.StatusBadRequest, fmt.Sprintf("unknown provider: %s", provider))
 	}
 	if !p.Enabled {
-		return appErrors.New(http.StatusBadRequest, fmt.Sprintf("provider %q is disabled", p.Name))
+		return domain.FrozenPrice{}, appErrors.New(http.StatusBadRequest, fmt.Sprintf("provider %q is disabled", p.Name))
 	}
 	if len(p.APIKeyEnc) == 0 {
-		return appErrors.New(http.StatusBadRequest, fmt.Sprintf("provider %q has no API key configured", p.Name))
+		return domain.FrozenPrice{}, appErrors.New(http.StatusBadRequest, fmt.Sprintf("provider %q has no API key configured", p.Name))
 	}
 
 	model = strings.TrimSpace(model)
 	if model == "" {
-		return nil
+		// No model pinned: nothing to price. Unpriced snapshot.
+		return domain.FrozenPrice{}, nil
 	}
 	for _, m := range p.Models {
 		if m.ModelID == model {
 			if !m.Enabled {
-				return appErrors.New(http.StatusBadRequest, fmt.Sprintf("model %q is disabled for provider %q", model, p.Name))
+				return domain.FrozenPrice{}, appErrors.New(http.StatusBadRequest, fmt.Sprintf("model %q is disabled for provider %q", model, p.Name))
 			}
-			return nil
+			// Freeze the model's current price at this moment.
+			return m.FrozenPrice(), nil
 		}
 	}
-	return appErrors.New(http.StatusBadRequest, fmt.Sprintf("model %q is not available for provider %q", model, p.Name))
+	return domain.FrozenPrice{}, appErrors.New(http.StatusBadRequest, fmt.Sprintf("model %q is not available for provider %q", model, p.Name))
 }
 
 func (g *DBGateway) resolve(ctx context.Context, name string) (Provider, error) {

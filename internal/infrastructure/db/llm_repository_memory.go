@@ -159,6 +159,9 @@ func (r *MemoryLLMRepository) UpdateModel(_ context.Context, m domain.LLMModel) 
 	existing.ModelID = strings.TrimSpace(m.ModelID)
 	existing.Label = strings.TrimSpace(m.Label)
 	existing.Enabled = m.Enabled
+	existing.PriceInPer1M = m.PriceInPer1M
+	existing.PriceOutPer1M = m.PriceOutPer1M
+	existing.Currency = m.Currency
 	existing.UpdatedAt = time.Now()
 	r.models[existing.ID] = existing
 	return nil

@@ -49,8 +49,24 @@ type LLMModel struct {
 	ModelID    string
 	Label      string
 	Enabled    bool
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	// Per-1M-token prices for cost estimation. Pointers so "not set" (nil) is
+	// distinct from "genuinely free" (a non-nil 0.0) — see FrozenPrice. Both are
+	// set together or both nil; Currency defaults to USD when a price is set but
+	// currency is blank. Read at scan start and frozen onto the scan record.
+	PriceInPer1M  *float64
+	PriceOutPer1M *float64
+	Currency      *string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+// FrozenPrice builds the scan-time price snapshot for this model. Returns an
+// unpriced snapshot when either price is unset.
+func (m LLMModel) FrozenPrice() FrozenPrice {
+	if m.PriceInPer1M == nil || m.PriceOutPer1M == nil {
+		return FrozenPrice{}
+	}
+	return FrozenPrice{In: m.PriceInPer1M, Out: m.PriceOutPer1M, Currency: m.Currency}
 }
 
 // UserLLMPreference is a user's chosen provider+model for scans. It is stored

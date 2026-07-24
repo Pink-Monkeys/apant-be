@@ -29,10 +29,11 @@ func (g *Gateway) Generate(ctx context.Context, provider string, in domain.AIGen
 
 // Validate checks only that the provider is one of the statically-wired
 // backends. This gateway has no model catalog (it is the no-DB fallback), so any
-// model is accepted.
-func (g *Gateway) Validate(_ context.Context, provider, _ string) error {
+// model is accepted and no price is known — it always returns an unpriced
+// snapshot, so scans on this path record tokens without a cost.
+func (g *Gateway) Validate(_ context.Context, provider, _ string) (domain.FrozenPrice, error) {
 	if _, ok := g.providers[provider]; !ok {
-		return fmt.Errorf("unsupported provider: %s", provider)
+		return domain.FrozenPrice{}, fmt.Errorf("unsupported provider: %s", provider)
 	}
-	return nil
+	return domain.FrozenPrice{}, nil
 }
