@@ -84,6 +84,13 @@ type ReportVuln struct {
 	PoC            ReportPoC      `json:"poc"`
 	Recommendation string         `json:"recommendation"`
 	Verified       bool           `json:"verified"`
+	// Status is the finding's state in the finder→validator pipeline: "validated"
+	// (evidence in the scan transcript confirms it), "candidate" (reported but not
+	// independently confirmed — e.g. an agent claim whose endpoint the scan never
+	// exercised, or a flag-tier observation), or "rejected" (contradicted; dropped
+	// before the report). Deterministic proof-tier detectors are validated; an agent's
+	// self-reported "verified" is downgraded to candidate unless the transcript backs it.
+	Status string `json:"status,omitempty"`
 	// CVSSScore is a representative CVSS v3.1 base score for the finding's class
 	// (the qualitative band it maps to). CWE is the matching Common Weakness
 	// Enumeration id. Both are assigned deterministically per vulnerability class.
