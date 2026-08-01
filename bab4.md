@@ -277,16 +277,18 @@ Tabel 11) disajikan pada Tabel 4.4.
 
 | **No** | **Kode** | **Kelas Kerentanan** | **Kriteria Keberhasilan** | **Hasil** | **Status** |
 | --- | --- | --- | --- | --- | --- |
-| 1 | DET-01 | SQL Injection | Parameter rentan ditemukan / SQLi dibuktikan | [ISI] | [ISI] |
-| 2 | DET-02 | Cross-Site Scripting (XSS) | Payload terefleksi/tereksekusi | [ISI] | [ISI] |
-| 3 | DET-03 | Authentication Bypass | Sesi terautentikasi tanpa kredensial sah | [ISI] | [ISI] |
-| 4 | DET-04 | SAST – Kerentanan Kode | Temuan terpetakan ke berkas + nomor baris | [ISI] | [ISI] |
-| 5 | DET-05 | SAST – Kebocoran Secret | *Secret* bocor terdeteksi | [ISI] | [ISI] |
+| 1 | DET-01 | SQL Injection | Parameter rentan ditemukan / SQLi dibuktikan | SQLi terverifikasi pada `POST /login`; *payload* `admin' OR '1'='1'-- -` menghasilkan respons 302 (login sukses). Dilaporkan sebagai VULN-001 (CWE-89, *verified*). | Berhasil |
+| 2 | DET-02 | Cross-Site Scripting (XSS) | Payload terefleksi/tereksekusi | Dua kelas XSS terkonfirmasi: *reflected*/DOM pada `/search?q=` (dikonfirmasi dalfox) dan *stored* pada `/comments`. Dilaporkan sebagai VULN-002 & VULN-012 (CWE-79). | Berhasil |
+| 3 | DET-03 | Authentication Bypass | Sesi terautentikasi tanpa kredensial sah | Bypass terbukti dua jalur: injeksi SQL `admin' OR '1'='1'--` pada `/login` memberi sesi tanpa kredensial sah, dan kredensial *default* `admin` diterima. Dilaporkan sebagai VULN-001 & VULN-008. | Berhasil |
+| 4 | DET-04 | SAST – Kerentanan Kode | Temuan terpetakan ke berkas + nomor baris | Temuan dipetakan presisi ke berkas + nomor baris: SQLi pada `app/public/index.php:173` (query *login*), XSS pada `index.php:150` & `:229`, *unrestricted upload* pada `index.php:306`, dan SSRF pada `api/server.js:59`. Seluruh 19 temuan menyertakan lokasi `berkas:baris`. | Berhasil |
+| 5 | DET-05 | SAST – Kebocoran Secret | *Secret* bocor terdeteksi | Dua *secret* ter-*hardcode* terdeteksi: kredensial SMTP pada `app/public/.env:21` (`MAIL_DSN=smtp://meridian:***`) dan *password* basis data `S3cr3tDBpass!2024` pada `api/server.js:11`. Dilaporkan sebagai VULN-010 & VULN-019. | Berhasil |
 
 Tabel 4.4: Hasil pengujian efektivitas deteksi per kasus uji
 
-*(Catatan: kolom Hasil dan Status diisi dari data pengujian aktual pada sesi
-pengujian benchmark.)*
+*(Catatan: DET-01 sampai DET-03 diisi dari laporan pemindaian DAST APANT dengan
+model deepseek-v4-pro (RPT-4C9B97), sedangkan DET-04 dan DET-05 diisi dari
+laporan pemindaian SAST APANT atas arsip `apant-vuln-lab.zip` (RPT-121037),
+keduanya terhadap aplikasi Meridian Digital yang sama.)*
 
 ### 4.4.2 Matriks Deteksi Ground Truth Antar-Tool
 
@@ -418,22 +420,52 @@ sebaiknya digunakan.
 
 ### 4.5.1 Kontribusi per Tool Keamanan Internal
 
-Tabel 4.7 memetakan setiap *tool* keamanan internal yang diorkestrasi APANT
-(nuclei, sqlmap, dalfox, dan lainnya) terhadap kerentanan *ground truth* yang
-seharusnya disurfacenya, beserta jumlah kerentanan yang benar-benar terdeteksi
-melalui *tool* tersebut. Pemetaan ini menunjukkan *tool* internal mana yang
-paling berkontribusi dan apakah ada *tool* yang jarang menghasilkan temuan.
+Tabel 4.7 memetakan kontribusi setiap *tool* keamanan internal yang diorkestrasi
+APANT, disusun langsung dari **log langkah (step) pemindaian** (scan
+`SCN-F19D09`) — yaitu *tool* apa yang benar-benar memunculkan tiap kerentanan.
+Kolom **Kerentanan yang Disurface** mencantumkan VULN-ID yang berhasil ditemukan
+melalui *tool* tersebut, dan kolom **Jumlah** menyatakan banyaknya.
 
-| **No.** | **Tool Internal** | **Kelas Kerentanan Sasaran** | **GT Terkait** | **Terdeteksi** |
-| --- | --- | --- | --- | --- |
-| 1. | httpx | *Missing headers*, *tech/banner* | [ISI] | [ISI] |
-| 2. | nuclei | *Exposed file*, miskonfigurasi | [ISI] | [ISI] |
-| 3. | sqlmap | SQL Injection | [ISI] | [ISI] |
-| 4. | dalfox | XSS | [ISI] | [ISI] |
-| 5. | katana / ffuf | Penemuan permukaan serangan | [ISI] | [ISI] |
-| 6. | agent (`http_request`) | IDOR, RCE, *login bypass* | [ISI] | [ISI] |
+| **No.** | **Tool Internal** | **Kerentanan yang Disurface (VULN-ID)** | **Jumlah** |
+| --- | --- | --- | --- |
+| 1. | `default_cred_login` | APANT-004 | 1 |
+| 2. | `httpx` | APANT-011 (jQuery via *tech fingerprint*) | 1 |
+| 3. | `http_request` (agen) | APANT-001, 002, 003, 005, 006, 007, 008, 009, 013, 014 | 10 |
+| 4. | `dalfox` | APANT-012 | 1 |
+| 5. | `nuclei` | APANT-015 (+ konfirmasi .env/.git) | 1 |
+| 6. | `sqlmap` | — (diblok WAF, hanya menghasilkan dugaan tak terverifikasi) | 0 |
+| 7. | `wafw00f` / `katana` | — (*recon* / *enabler* pemetaan) | 0 |
+| | **Total** | | **14** |
 
-Tabel 4.7: Kontribusi per tool keamanan internal terhadap deteksi
+Tabel 4.7: Kontribusi per tool keamanan internal terhadap deteksi (dari log SCN-F19D09)
+
+Berbeda dengan matriks pada Subbab 4.4 yang menilai *tool* dari laporan akhir,
+Tabel 4.7 menelusuri **log langkah pemindaian** sehingga atribusi *tool* bersifat
+faktual, bukan perkiraan. Tiga temuan penting muncul dari pemetaan ini.
+**Pertama**, **agen (`http_request`) adalah tulang punggung deteksi** — memunculkan
+10 dari 14 kerentanan yang dilaporkan, termasuk seluruh kerentanan yang menuntut
+rantai serangan bertahap (SQLi *login*, RCE via *unrestricted upload*, IDOR web,
+IDOR API, hingga *open redirect*). Ini menegaskan bahwa kekuatan APANT terletak
+pada penalaran agen yang mengirim permintaan HTTP terarah, bukan semata pada
+*scanner* siap-pakai. **Kedua**, **`sqlmap` justru gagal total**: seluruh
+percobaannya pada parameter `post?id=` diblokir Cloudflare (HTTP 403 berulang)
+sehingga tidak menghasilkan satu pun temuan terverifikasi — bahkan menyisakan satu
+dugaan tak terbukti yang menjadi kandidat *false positive*. Menariknya, SQL
+Injection yang sah (APANT-001 pada `/login`) justru ditemukan agen lewat
+`http_request` manual, bukan oleh `sqlmap`. Fakta ini menjadi bukti nyata
+keunggulan pendekatan agentik dibanding ketergantungan pada satu *tool* khusus
+yang mudah dijegal WAF. **Ketiga**, *tool* pendukung punya peran spesifik namun
+sempit: `default_cred_login`, `httpx`, `dalfox`, dan `nuclei` masing-masing
+menuntaskan sasaran khususnya (kredensial *default*, deteksi komponen usang, XSS
+terefleksi, dan *missing security headers*), sedangkan `wafw00f` dan `katana`
+berfungsi sebagai *recon*/*enabler* tanpa menghasilkan temuan kerentanan langsung.
+
+Perlu dicatat, dua kerentanan yang terlewat (APANT-010 SSRF dan APANT-016
+*information disclosure*) tidak muncul di kolom mana pun karena memang tidak ada
+*tool* yang berhasil menuntaskannya pada pemindaian ini: *endpoint* SSRF
+`/api/v1/fetch` tidak pernah dieksplorasi agen, sementara `robots.txt` sempat
+terdeteksi `nuclei` di tingkat mentah namun tidak diangkat menjadi temuan pada
+laporan akhir.
 
 ### 4.5.2 Perbandingan Antar-Model LLM
 
@@ -446,20 +478,27 @@ disajikan pada Tabel 4.8.
 
 | **No.** | **Model LLM** | **Recall (VULN-ID)** | **Jumlah Langkah** | **Waktu Eksekusi** | **Catatan** |
 | --- | --- | --- | --- | --- | --- |
-| 1. | [Model A] | [ISI] | [ISI] | [ISI] | [ISI] |
-| 2. | [Model B] | [ISI] | [ISI] | [ISI] | [ISI] |
-| 3. | [Model C] | [ISI] | [ISI] | [ISI] | [ISI] |
+| 1. | gpt-5.4 | 14/16 (87,5%) | 26 | 11m0s | Menemukan SSRF (010); terlewat CSRF (014) & *info disclosure* (016) |
+| 2. | qwen-3.7-max | 12/16 (75%) | 26 | 17m58s | Terlewat daftar/IDOR API (008/009), SSRF (010) & *info disclosure* (016) |
+| 3. | deepseek-v4-pro | 14/16 (87,5%) | 29 | 13m41s | Menemukan CSRF (014); terlewat SSRF (010) & *info disclosure* (016) |
 
 Tabel 4.8: Perbandingan efektivitas antar-model LLM
 
 Analisis atas perbandingan ini menyoroti bahwa perbedaan kemampuan antar-model
 tidak hanya terlihat pada angka *recall* total, tetapi juga pada **perilaku
-agen**. Sebagai contoh, model yang lebih lemah dapat gagal seluruhnya pada satu
-kelas kerentanan tertentu apabila tidak pernah melakukan tindakan yang
-diperlukan untuk menjangkaunya (misalnya tidak pernah mengirim permintaan
-*POST*, sehingga seluruh kerentanan pada *endpoint* yang hanya menerima *POST*
-tidak akan pernah teruji). Temuan kualitatif semacam ini sering kali lebih
-informatif daripada selisih angka semata.
+agen dalam memilih *endpoint* yang dieksplorasi**. `gpt-5.4` dan
+`deepseek-v4-pro` mencapai *recall* tertinggi yang setara (87,5%), namun
+keduanya melewatkan kerentanan yang **berbeda**: `gpt-5.4` berhasil membuktikan
+SSRF (APANT-010) tetapi tidak menguji CSRF (APANT-014), sedangkan
+`deepseek-v4-pro` justru sebaliknya — menemukan CSRF namun tidak pernah
+menjangkau *endpoint* SSRF `/api/v1/fetch`. Sementara itu `qwen-3.7-max`, meski
+mengirim permintaan *POST* dan menemukan CSRF, gagal mengenumerasi *endpoint*
+API pengguna (APANT-008/009) yang justru terekspos tanpa autentikasi — sebuah
+celah cakupan yang tidak dijelaskan oleh tingkat kesulitan kerentanan. Ketiga
+model sama-sama melewatkan *information disclosure* (APANT-016), menegaskan
+kembali bahwa kerentanan bertingkat *info* cenderung diabaikan *tool* otomatis.
+Temuan kualitatif semacam ini — model mana mengeksplorasi *endpoint* mana —
+sering kali lebih informatif daripada selisih angka semata.
 
 **Batasan interpretasi:** karena sifat non-deterministik LLM dan jumlah
 percobaan yang masih terbatas, hasil perbandingan ini diposisikan sebagai
@@ -477,16 +516,23 @@ pemindaian untuk tiap model.
 
 | **No.** | **Model LLM** | **Token Masukan** | **Token Keluaran** | **Estimasi Biaya** |
 | --- | --- | --- | --- | --- |
-| 1. | [Model A] | [ISI] | [ISI] | [ISI] |
-| 2. | [Model B] | [ISI] | [ISI] | [ISI] |
-| 3. | [Model C] | [ISI] | [ISI] | [ISI] |
+| 1. | gpt-5.4 | 220.694 | 3.005 | $0,1189 |
+| 2. | qwen-3.7-max | 272.288 | 10.119 | $0,2027 |
+| 3. | deepseek-v4-pro | 359.946 | 16.580 | $0,0393 |
 
 Tabel 4.9: Konsumsi token dan estimasi biaya per pemindaian
 
 Analisis efisiensi mempertimbangkan hubungan antara biaya dan cakupan deteksi:
 model dengan *recall* tertinggi belum tentu paling efisien apabila biayanya jauh
-lebih besar. Pertimbangan ini relevan bagi tim keamanan dalam memilih model
-sesuai anggaran dan kebutuhan cakupan.
+lebih besar. Data pada Tabel 4.9 memperlihatkan bahwa biaya bukan sekadar fungsi
+jumlah token, melainkan bergantung pada harga per token tiap model.
+`deepseek-v4-pro` justru mengonsumsi token **terbanyak** (359.946 masukan +
+16.580 keluaran) namun berbiaya **termurah** ($0,0393) — sekitar sepertiga biaya
+`gpt-5.4` ($0,1189) untuk *recall* yang setara (87,5%), sehingga menjadi pilihan
+paling efisien pada pengujian ini. Sebaliknya, `qwen-3.7-max` adalah yang
+**termahal** ($0,2027) sekaligus memiliki *recall* terendah (75%), menjadikannya
+paling tidak efisien. Pertimbangan ini relevan bagi tim keamanan dalam memilih
+model sesuai anggaran dan kebutuhan cakupan.
 
 ## 4.7 Pembahasan
 
